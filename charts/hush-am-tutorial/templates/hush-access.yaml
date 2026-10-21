@@ -1,0 +1,94 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ include "hush-am-tutorial.fullname" . }}-postgres-root-secret
+  namespace: {{ .Values.hush.namespace }}
+  labels:
+    app.kubernetes.io/instance: {{ .Release.Name }}
+type: Opaque
+stringData:
+  password: {{ include "hush-am-tutorial.postgresRootPassword" . | quote }}
+---
+apiVersion: am.hush.security/v1alpha1
+kind: AccessCredential
+metadata:
+  name: {{ .Values.hush.credentialName }}
+  namespace: {{ .Values.hush.namespace }}
+spec:
+  name: {{ .Values.hush.credentialName }}
+  type: postgres
+  description: Root credential used by Hush to broker Postgres access
+  config:
+    db_name: {{ .Values.postgres.dbName | quote }}
+    host: {{ default (include "hush-am-tutorial.postgresHost" .) .Values.hush.postgresHost | quote }}
+    port: {{ .Values.postgres.port }}
+    ssl_mode: {{ .Values.hush.sslMode | quote }}
+    username: {{ .Values.postgres.rootUsername | quote }}
+  secretRef:
+    name: {{ include "hush-am-tutorial.fullname" . }}-postgres-root-secret
+---
+apiVersion: am.hush.security/v1alpha1
+kind: AccessPrivilege
+metadata:
+  name: {{ include "hush-am-tutorial.fullname" . }}-readwrite-all
+  namespace: {{ .Values.hush.namespace }}
+spec:
+  name: {{ include "hush-am-tutorial.fullname" . }}-readwrite-all
+  type: postgres
+  description: Read and write access to the tutorial's invoices table
+  config:
+    grants:
+      - object_type: SCHEMA
+        privileges: [USAGE]
+        object_names: ["public"]
+      - object_type: TABLE
+        privileges: [SELECT, INSERT, UPDATE, DELETE]
+        object_names: ["invoices"]
+---
+apiVersion: am.hush.security/v1alpha1
+kind: AccessPrivilege
+metadata:
+  name: {{ include "hush-am-tutorial.fullname" . }}-read-all
+  namespace: {{ .Values.hush.namespace }}
+spec:
+  name: {{ include "hush-am-tutorial.fullname" . }}-read-all
+  type: postgres
+  description: Read access to the tutorial's invoices table
+  config:
+    grants:
+      - object_type: SCHEMA
+        privileges: [USAGE]
+        object_names: ["public"]
+      - object_type: TABLE
+        privileges: [SELECT]
+        object_names: ["invoices"]
+---
+apiVersion: am.hush.security/v1alpha1
+kind: AccessPolicy
+metadata:
+  name: {{ .Values.hush.policyName }}
+  namespace: {{ .Values.hush.namespace }}
+spec:
+  name: {{ .Values.hush.policyName }}
+  description: Inject Postgres credentials into the tutorial client
+  accessCredentialRef:
+    name: {{ .Values.hush.credentialName }}
+  accessPrivilegeRefs:
+    - name: {{ include "hush-am-tutorial.fullname" . }}-readwrite-all
+  attestationCriteria:
+    - type: "k8s:ns"
+      value: {{ .Release.Namespace }}
+    - type: "k8s:sa"
+      value: {{ include "hush-am-tutorial.serviceAccountName" . }}
+    - type: "k8s:container-name"
+      value: client
+  deliveryConfig:
+    type: env
+    config:
+      items:
+        - name: POSTGRES_USERNAME
+          key: username
+          type: key
+        - name: POSTGRES_PASSWORD
+          key: password
+          type: key

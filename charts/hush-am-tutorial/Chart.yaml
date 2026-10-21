@@ -1,0 +1,6 @@
+apiVersion: v2
+name: hush-am-tutorial
+description: Guided tutorial for Hush Access Management with a sample Postgres client
+type: application
+version: 0.1.0
+appVersion: "0.1.0"

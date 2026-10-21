@@ -1,0 +1,108 @@
+{{- /*
+Shared identity for the restart and cleanup jobs. Recreated for each hook phase
+and deleted once the phase succeeds, so nothing outlives the uninstall.
+*/}}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ include "hush-am-tutorial.hooksServiceAccountName" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/instance: {{ .Release.Name }}
+  annotations:
+    helm.sh/hook: post-install,post-upgrade,post-delete
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+    helm.sh/hook-weight: "-5"
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ include "hush-am-tutorial.hooksServiceAccountName" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/instance: {{ .Release.Name }}
+  annotations:
+    helm.sh/hook: post-install,post-upgrade,post-delete
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+    helm.sh/hook-weight: "-5"
+rules:
+  # restart: the client deployment
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    resourceNames: [{{ include "hush-am-tutorial.fullname" . | quote }}]
+    verbs: ["get", "patch"]
+  # cleanup: the Postgres hooks, by name, so nothing else in the namespace is at risk
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    resourceNames: [{{ include "hush-am-tutorial.postgresName" . | quote }}]
+    verbs: ["delete"]
+  - apiGroups: [""]
+    resources: ["services"]
+    resourceNames: [{{ include "hush-am-tutorial.postgresName" . | quote }}]
+    verbs: ["delete"]
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    resourceNames: [{{ printf "%s-init" (include "hush-am-tutorial.postgresName" .) | quote }}]
+    verbs: ["delete"]
+  - apiGroups: ["batch"]
+    resources: ["jobs"]
+    resourceNames: [{{ printf "%s-wait" (include "hush-am-tutorial.postgresName" .) | quote }}]
+    verbs: ["delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ include "hush-am-tutorial.hooksServiceAccountName" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/instance: {{ .Release.Name }}
+  annotations:
+    helm.sh/hook: post-install,post-upgrade,post-delete
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+    helm.sh/hook-weight: "-5"
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ include "hush-am-tutorial.hooksServiceAccountName" . }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "hush-am-tutorial.hooksServiceAccountName" . }}
+    namespace: {{ .Release.Namespace }}
+---
+{{- /* restart: read the policy status, scoped to the Hush namespace only */}}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ include "hush-am-tutorial.hooksServiceAccountName" . }}-policy-reader
+  namespace: {{ .Values.hush.namespace }}
+  labels:
+    app.kubernetes.io/instance: {{ .Release.Name }}
+  annotations:
+    helm.sh/hook: post-install,post-upgrade,post-delete
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+    helm.sh/hook-weight: "-5"
+rules:
+  - apiGroups: ["am.hush.security"]
+    resources: ["accesspolicies"]
+    resourceNames: [{{ .Values.hush.policyName | quote }}]
+    verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ include "hush-am-tutorial.hooksServiceAccountName" . }}-policy-reader
+  namespace: {{ .Values.hush.namespace }}
+  labels:
+    app.kubernetes.io/instance: {{ .Release.Name }}
+  annotations:
+    helm.sh/hook: post-install,post-upgrade,post-delete
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+    helm.sh/hook-weight: "-5"
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ include "hush-am-tutorial.hooksServiceAccountName" . }}-policy-reader
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "hush-am-tutorial.hooksServiceAccountName" . }}
+    namespace: {{ .Release.Namespace }}

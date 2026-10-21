@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "hush-am-tutorial.postgresName" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: {{ include "hush-am-tutorial.name" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+  annotations:
+    # Phase (a): the AccessCredential resolves this DNS name. Install only, so it
+    # keeps its cluster IP: recreated on upgrade, it would strand open connects.
+    helm.sh/hook: pre-install
+    helm.sh/hook-delete-policy: before-hook-creation
+    helm.sh/hook-weight: "-25"
+spec:
+  selector:
+    app.kubernetes.io/name: {{ include "hush-am-tutorial.name" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: postgres
+  ports:
+    - port: {{ .Values.postgres.port }}
+      targetPort: postgres
+      protocol: TCP

@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "hush-am-tutorial.postgresName" . }}-init
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: {{ include "hush-am-tutorial.name" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+  annotations:
+    helm.sh/hook: pre-install,pre-upgrade
+    helm.sh/hook-delete-policy: before-hook-creation
+    helm.sh/hook-weight: "-25"
+data:
+  01-init.sql: |
+    CREATE TABLE IF NOT EXISTS invoices (
+      ref TEXT NOT NULL,
+      written_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+
+    INSERT INTO invoices (ref)
+    SELECT 'seed'
+    WHERE NOT EXISTS (SELECT 1 FROM invoices WHERE ref = 'seed');
+

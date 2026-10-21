@@ -1,0 +1,44 @@
+{{- /*
+Hook resources are not tracked in the release, so `helm uninstall` does not
+remove the Postgres hooks — this does.
+*/}}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "hush-am-tutorial.fullname" . }}-postgres-cleanup
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/instance: {{ .Release.Name }}
+  annotations:
+    helm.sh/hook: post-delete
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+    helm.sh/hook-weight: "0"
+spec:
+  backoffLimit: 3
+  template:
+    spec:
+      serviceAccountName: {{ include "hush-am-tutorial.hooksServiceAccountName" . }}
+      restartPolicy: Never
+      securityContext:
+        {{- include "hush-am-tutorial.podSecurityContext" 65534 | nindent 8 }}
+      containers:
+        - name: cleanup
+          image: {{ .Values.hooks.kubectlImage }}
+          securityContext:
+            {{- include "hush-am-tutorial.containerSecurityContext" . | nindent 12 }}
+          env:
+            # kubectl keeps its cache under HOME; the image has none for this user.
+            - name: HOME
+              value: /tmp
+          command:
+            - sh
+            - -c
+            - |
+              set -e
+              NS={{ .Release.Namespace }}
+              kubectl delete --ignore-not-found -n "$NS" \
+                deployment/{{ include "hush-am-tutorial.postgresName" . }} \
+                service/{{ include "hush-am-tutorial.postgresName" . }} \
+                configmap/{{ include "hush-am-tutorial.postgresName" . }}-init \
+                job/{{ include "hush-am-tutorial.postgresName" . }}-wait
+              echo "Postgres hook resources removed."

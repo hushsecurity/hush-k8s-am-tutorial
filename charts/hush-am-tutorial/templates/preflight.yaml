@@ -1,0 +1,13 @@
+{{- /*
+Stop before anything is created when Hush is missing, rather than failing
+halfway with the Postgres hooks already running. Checked only against a live
+cluster: helm template and helm lint cannot see what is installed.
+*/}}
+{{- if lookup "v1" "Namespace" "" "kube-system" }}
+{{- if not (.Capabilities.APIVersions.Has "am.hush.security/v1alpha1") }}
+{{- fail "Hush Access Management is not installed in this cluster (no am.hush.security/v1alpha1 API). Install Hush first." }}
+{{- end }}
+{{- if not (lookup "v1" "Namespace" "" .Values.hush.namespace) }}
+{{- fail (printf "Namespace %s not found. Install Hush first, or set hush.namespace to the namespace it runs in." .Values.hush.namespace) }}
+{{- end }}
+{{- end }}

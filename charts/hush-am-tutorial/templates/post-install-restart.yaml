@@ -1,0 +1,59 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "hush-am-tutorial.fullname" . }}-restart
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/instance: {{ .Release.Name }}
+  annotations:
+    helm.sh/hook: post-install,post-upgrade
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+    helm.sh/hook-weight: "5"
+spec:
+  backoffLimit: 3
+  template:
+    spec:
+      serviceAccountName: {{ include "hush-am-tutorial.hooksServiceAccountName" . }}
+      restartPolicy: Never
+      securityContext:
+        {{- include "hush-am-tutorial.podSecurityContext" 65534 | nindent 8 }}
+      containers:
+        - name: restart
+          image: {{ .Values.hooks.kubectlImage }}
+          securityContext:
+            {{- include "hush-am-tutorial.containerSecurityContext" . | nindent 12 }}
+          env:
+            # kubectl keeps its cache under HOME; the image has none for this user.
+            - name: HOME
+              value: /tmp
+            - name: TIMEOUT_SECONDS
+              value: {{ .Values.hooks.policySyncTimeoutSeconds | quote }}
+          command:
+            - sh
+            - -c
+            - |
+              set -u
+              HUSH_NS={{ .Values.hush.namespace }}
+              POLICY={{ .Values.hush.policyName }}
+
+              echo "Waiting for Hush AM to reconcile AccessPolicy/${POLICY}..."
+              DEADLINE=$(( $(date +%s) + TIMEOUT_SECONDS ))
+              while true; do
+                STATUS=$(kubectl get accesspolicy "$POLICY" -n "$HUSH_NS" \
+                  -o jsonpath='{.status.uamStatus}' 2>/dev/null || true)
+                if [ "$STATUS" = "ok" ]; then
+                  echo "  ${POLICY}: ok"
+                  break
+                fi
+                if [ "$(date +%s)" -ge "$DEADLINE" ]; then
+                  echo "  WARNING: ${POLICY} did not reach uamStatus=ok within ${TIMEOUT_SECONDS}s (last seen: ${STATUS:-pending})" >&2
+                  kubectl get accesspolicy "$POLICY" -n "$HUSH_NS" -o jsonpath='  statusCode: {.status.statusCode}{"\n"}  statusDetail: {.status.statusDetail}{"\n"}' 2>/dev/null || true
+                  break
+                fi
+                echo "  ${POLICY}: ${STATUS:-pending}"
+                sleep 2
+              done
+
+              # Phase (c): credentials are injected at admission time.
+              echo "Restarting client deployment to trigger credential injection..."
+              kubectl rollout restart deployment/{{ include "hush-am-tutorial.fullname" . }} -n {{ .Release.Namespace }}

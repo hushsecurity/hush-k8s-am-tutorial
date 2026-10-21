@@ -1,0 +1,33 @@
+nameOverride: ""
+fullnameOverride: "hush-am-tutorial"
+
+postgres:
+  image: postgres:16
+  dbName: tutorial
+  rootUsername: postgres
+  # Left empty, a random one is generated on install and kept on upgrades.
+  rootPassword: ""
+  port: 5432
+
+client:
+  image:
+    repository: public.ecr.aws/z0t8l6o4/hush-k8s-am-tutorial
+    # Defaults to the chart's appVersion.
+    tag: ""
+    pullPolicy: IfNotPresent
+  pollIntervalSeconds: 5
+  # Leading characters of the injected password to print, so rotation is visible.
+  secretRevealChars: 4
+
+hooks:
+  kubectlImage: alpine/kubectl:1.33.4
+  postgresReadyTimeoutSeconds: 300
+  policySyncTimeoutSeconds: 120
+
+hush:
+  namespace: hush-security
+  credentialName: hush-am-tutorial-postgres
+  policyName: hush-am-tutorial-policy
+  # Postgres host as seen by the Hush UAM API; defaults to the service DNS name.
+  postgresHost: ""
+  sslMode: disable

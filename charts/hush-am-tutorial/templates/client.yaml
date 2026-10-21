@@ -1,0 +1,46 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "hush-am-tutorial.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: {{ include "hush-am-tutorial.name" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: client
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ include "hush-am-tutorial.name" . }}
+      app.kubernetes.io/instance: {{ .Release.Name }}
+      app.kubernetes.io/component: client
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ include "hush-am-tutorial.name" . }}
+        app.kubernetes.io/instance: {{ .Release.Name }}
+        app.kubernetes.io/component: client
+    spec:
+      serviceAccountName: {{ include "hush-am-tutorial.serviceAccountName" . }}
+      restartPolicy: Always
+      securityContext:
+        {{- include "hush-am-tutorial.podSecurityContext" 10001 | nindent 8 }}
+      containers:
+        - name: client
+          image: {{ include "hush-am-tutorial.clientImage" . }}
+          imagePullPolicy: {{ .Values.client.image.pullPolicy }}
+          securityContext:
+            {{- include "hush-am-tutorial.containerSecurityContext" . | nindent 12 }}
+          command: ["python"]
+          args: ["client.py"]
+          env:
+            - name: POSTGRES_HOST
+              value: {{ include "hush-am-tutorial.postgresHost" . | quote }}
+            - name: POSTGRES_PORT
+              value: {{ .Values.postgres.port | quote }}
+            - name: POSTGRES_DB
+              value: {{ .Values.postgres.dbName | quote }}
+            - name: POLL_INTERVAL_SECONDS
+              value: {{ .Values.client.pollIntervalSeconds | quote }}
+            - name: SECRET_REVEAL_CHARS
+              value: {{ .Values.client.secretRevealChars | quote }}

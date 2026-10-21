@@ -1,0 +1,75 @@
+{{- /*
+Phase (a) gate: Helm runs pre-install hooks to completion before applying the
+release's regular resources, so this blocks the install until Postgres is up.
+*/}}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "hush-am-tutorial.postgresName" . }}-wait
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: {{ include "hush-am-tutorial.name" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: postgres-wait
+  annotations:
+    helm.sh/hook: pre-install,pre-upgrade
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+    helm.sh/hook-weight: "-10"
+spec:
+  backoffLimit: 1
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ include "hush-am-tutorial.name" . }}
+        app.kubernetes.io/instance: {{ .Release.Name }}
+        app.kubernetes.io/component: postgres-wait
+    spec:
+      restartPolicy: Never
+      securityContext:
+        {{- include "hush-am-tutorial.podSecurityContext" 999 | nindent 8 }}
+      containers:
+        - name: wait
+          image: {{ .Values.postgres.image }}
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            {{- include "hush-am-tutorial.containerSecurityContext" . | nindent 12 }}
+          env:
+            - name: PGHOST
+              value: {{ include "hush-am-tutorial.postgresHost" . | quote }}
+            - name: PGPORT
+              value: {{ .Values.postgres.port | quote }}
+            - name: PGUSER
+              value: {{ .Values.postgres.rootUsername | quote }}
+            - name: PGDATABASE
+              value: {{ .Values.postgres.dbName | quote }}
+            - name: PGPASSWORD
+              value: {{ include "hush-am-tutorial.postgresRootPassword" . | quote }}
+            - name: TIMEOUT_SECONDS
+              value: {{ .Values.hooks.postgresReadyTimeoutSeconds | quote }}
+          command:
+            - sh
+            - -c
+            - |
+              set -u
+              echo "Waiting up to ${TIMEOUT_SECONDS}s for Postgres at ${PGHOST}:${PGPORT}..."
+              DEADLINE=$(( $(date +%s) + TIMEOUT_SECONDS ))
+              while ! pg_isready -q; do
+                if [ "$(date +%s)" -ge "$DEADLINE" ]; then
+                  echo "Timed out waiting for Postgres after ${TIMEOUT_SECONDS}s." >&2
+                  pg_isready || true
+                  exit 1
+                fi
+                echo "  not ready yet, retrying..."
+                sleep 2
+              done
+              echo "Postgres is accepting connections. Applying the seed script..."
+              psql -v ON_ERROR_STOP=1 -q -f /schema/01-init.sql
+              echo "Seed script applied."
+          volumeMounts:
+            - name: schema
+              mountPath: /schema
+              readOnly: true
+      volumes:
+        - name: schema
+          configMap:
+            name: {{ include "hush-am-tutorial.postgresName" . }}-init
