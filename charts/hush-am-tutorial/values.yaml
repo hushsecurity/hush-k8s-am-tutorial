@@ -19,6 +19,14 @@ client:
   # Leading characters of the injected password to print, so rotation is visible.
   secretRevealChars: 4
 
+# Example services, each running the same client as its own service account and
+# granted its own AccessPolicy with the named AccessPrivilege.
+apps:
+  billing:
+    privilege: readwrite-all
+  analytics:
+    privilege: read-all
+
 hooks:
   kubectlImage: alpine/kubectl:1.33.4
   postgresReadyTimeoutSeconds: 300
@@ -27,7 +35,6 @@ hooks:
 hush:
   namespace: hush-security
   credentialName: hush-am-tutorial-postgres
-  policyName: hush-am-tutorial-policy
   # Postgres host as seen by the Hush UAM API; defaults to the service DNS name.
   postgresHost: ""
   sslMode: disable

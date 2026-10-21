@@ -62,24 +62,25 @@ spec:
       - object_type: TABLE
         privileges: [SELECT]
         object_names: ["invoices"]
+{{- range $app, $cfg := .Values.apps }}
 ---
 apiVersion: am.hush.security/v1alpha1
 kind: AccessPolicy
 metadata:
-  name: {{ .Values.hush.policyName }}
-  namespace: {{ .Values.hush.namespace }}
+  name: {{ include "hush-am-tutorial.appName" (list $ $app) }}
+  namespace: {{ $.Values.hush.namespace }}
 spec:
-  name: {{ .Values.hush.policyName }}
-  description: Inject Postgres credentials into the tutorial client
+  name: {{ include "hush-am-tutorial.appName" (list $ $app) }}
+  description: Inject Postgres credentials into the tutorial {{ $app }} app
   accessCredentialRef:
-    name: {{ .Values.hush.credentialName }}
+    name: {{ $.Values.hush.credentialName }}
   accessPrivilegeRefs:
-    - name: {{ include "hush-am-tutorial.fullname" . }}-readwrite-all
+    - name: {{ include "hush-am-tutorial.fullname" $ }}-{{ $cfg.privilege }}
   attestationCriteria:
     - type: "k8s:ns"
-      value: {{ .Release.Namespace }}
+      value: {{ $.Release.Namespace }}
     - type: "k8s:sa"
-      value: {{ include "hush-am-tutorial.serviceAccountName" . }}
+      value: {{ include "hush-am-tutorial.appServiceAccountName" (list $ $app) }}
     - type: "k8s:container-name"
       value: client
   deliveryConfig:
@@ -92,3 +93,4 @@ spec:
         - name: POSTGRES_PASSWORD
           key: password
           type: key
+{{- end }}

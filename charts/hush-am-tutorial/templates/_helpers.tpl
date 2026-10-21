@@ -27,8 +27,13 @@
 {{- printf "%s.%s.svc.cluster.local" (include "hush-am-tutorial.postgresName" .) .Release.Namespace -}}
 {{- end -}}
 
-{{- define "hush-am-tutorial.serviceAccountName" -}}
-{{- printf "%s-sa" (include "hush-am-tutorial.fullname" .) -}}
+{{- /* Deployment and AccessPolicy name of an app; takes (list $ appName). */ -}}
+{{- define "hush-am-tutorial.appName" -}}
+{{- printf "%s-%s" (include "hush-am-tutorial.fullname" (index . 0)) (index . 1) -}}
+{{- end -}}
+
+{{- define "hush-am-tutorial.appServiceAccountName" -}}
+{{- printf "%s-sa" (include "hush-am-tutorial.appName" .) -}}
 {{- end -}}
 
 {{- define "hush-am-tutorial.hooksServiceAccountName" -}}

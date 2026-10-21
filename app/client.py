@@ -1,7 +1,8 @@
 import hashlib
 import logging
 import os
-import time
+import signal
+import threading
 from functools import partial
 
 import psycopg2
@@ -20,6 +21,8 @@ POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD")
 POLL_INTERVAL_SECONDS = int(os.getenv("POLL_INTERVAL_SECONDS", "15"))
 SECRET_REVEAL_CHARS = int(os.getenv("SECRET_REVEAL_CHARS", "4"))
 CONNECT_TIMEOUT_SECONDS = int(os.getenv("CONNECT_TIMEOUT_SECONDS", "5"))
+POD_NAMESPACE = os.getenv("POD_NAMESPACE", "<unknown>")
+SERVICE_ACCOUNT = os.getenv("SERVICE_ACCOUNT", "<unknown>")
 TABLES = ("invoices",)
 
 
@@ -45,16 +48,19 @@ def log_injected_credentials() -> None:
     )
 
 
-def validate_required_env() -> None:
-    if POSTGRES_USERNAME and POSTGRES_PASSWORD:
-        return
+def credentials_injected() -> bool:
+    return bool(POSTGRES_USERNAME and POSTGRES_PASSWORD)
 
-    logging.error(
-        "Missing injected postgres credentials (POSTGRES_USERNAME / POSTGRES_PASSWORD). "
-        "Hush AccessPolicy may not have been reconciled before this pod was admitted. "
-        "Delete this pod so it is re-created after the policy is active."
+
+def log_missing_credentials() -> None:
+    # Credentials are bound at admission, so a container restart cannot fix this:
+    # the pod has to be re-created once a matching policy exists.
+    logging.warning(
+        "No postgres credential injected: no Hush AccessPolicy matched this "
+        "workload when the pod was created (ns=%s sa=%s)",
+        POD_NAMESPACE,
+        SERVICE_ACCOUNT,
     )
-    raise SystemExit(1)
 
 
 def read_table(cursor, table: str) -> str:
@@ -140,18 +146,26 @@ def exercise_tables() -> None:
 
 
 def main() -> None:
-    validate_required_env()
+    stop = threading.Event()
+    for signum in (signal.SIGTERM, signal.SIGINT):
+        signal.signal(signum, lambda *_: stop.set())
 
-    while True:
+    while not stop.is_set():
         # Every cycle, so tailing the log shows the credential in use.
-        log_injected_credentials()
+        if credentials_injected():
+            log_injected_credentials()
+        else:
+            log_missing_credentials()
 
+        # Without credentials this still tries, so the log shows Postgres refusing.
         try:
             exercise_tables()
         except Exception as exc:
-            logging.error("DB connection failed: %s", exc)
+            logging.error("DB connection failed: %s", str(exc).strip())
 
-        time.sleep(POLL_INTERVAL_SECONDS)
+        stop.wait(POLL_INTERVAL_SECONDS)
+
+    logging.info("Stopping")
 
 
 if __name__ == "__main__":

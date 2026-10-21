@@ -26,10 +26,13 @@ metadata:
     helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
     helm.sh/hook-weight: "-5"
 rules:
-  # restart: the client deployment
+  # restart: the apps' deployments
   - apiGroups: ["apps"]
     resources: ["deployments"]
-    resourceNames: [{{ include "hush-am-tutorial.fullname" . | quote }}]
+    resourceNames:
+      {{- range $app, $_ := .Values.apps }}
+      - {{ include "hush-am-tutorial.appName" (list $ $app) | quote }}
+      {{- end }}
     verbs: ["get", "patch"]
   # cleanup: the Postgres hooks, by name, so nothing else in the namespace is at risk
   - apiGroups: ["apps"]
@@ -84,7 +87,10 @@ metadata:
 rules:
   - apiGroups: ["am.hush.security"]
     resources: ["accesspolicies"]
-    resourceNames: [{{ .Values.hush.policyName | quote }}]
+    resourceNames:
+      {{- range $app, $_ := .Values.apps }}
+      - {{ include "hush-am-tutorial.appName" (list $ $app) | quote }}
+      {{- end }}
     verbs: ["get"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
