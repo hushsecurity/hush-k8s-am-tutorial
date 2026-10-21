@@ -10,7 +10,7 @@ metadata:
   labels:
     app.kubernetes.io/instance: {{ .Release.Name }}
   annotations:
-    helm.sh/hook: post-install,post-upgrade,post-delete
+    helm.sh/hook: post-install,post-delete
     helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
     helm.sh/hook-weight: "-5"
 ---
@@ -22,7 +22,7 @@ metadata:
   labels:
     app.kubernetes.io/instance: {{ .Release.Name }}
   annotations:
-    helm.sh/hook: post-install,post-upgrade,post-delete
+    helm.sh/hook: post-install,post-delete
     helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
     helm.sh/hook-weight: "-5"
 rules:
@@ -60,7 +60,7 @@ metadata:
   labels:
     app.kubernetes.io/instance: {{ .Release.Name }}
   annotations:
-    helm.sh/hook: post-install,post-upgrade,post-delete
+    helm.sh/hook: post-install,post-delete
     helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
     helm.sh/hook-weight: "-5"
 roleRef:
@@ -81,14 +81,14 @@ metadata:
   labels:
     app.kubernetes.io/instance: {{ .Release.Name }}
   annotations:
-    helm.sh/hook: post-install,post-upgrade,post-delete
+    helm.sh/hook: post-install,post-delete
     helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
     helm.sh/hook-weight: "-5"
 rules:
   - apiGroups: ["am.hush.security"]
     resources: ["accesspolicies"]
     resourceNames:
-      {{- range $app, $_ := .Values.apps }}
+      {{- range $app := include "hush-am-tutorial.policyApps" . | splitList " " | compact }}
       - {{ include "hush-am-tutorial.appName" (list $ $app) | quote }}
       {{- end }}
     verbs: ["get"]
@@ -101,7 +101,7 @@ metadata:
   labels:
     app.kubernetes.io/instance: {{ .Release.Name }}
   annotations:
-    helm.sh/hook: post-install,post-upgrade,post-delete
+    helm.sh/hook: post-install,post-delete
     helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
     helm.sh/hook-weight: "-5"
 roleRef:

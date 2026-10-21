@@ -32,6 +32,28 @@
 {{- printf "%s-%s" (include "hush-am-tutorial.fullname" (index . 0)) (index . 1) -}}
 {{- end -}}
 
+{{- /* Space-separated names of the apps that are deployed. */ -}}
+{{- define "hush-am-tutorial.deployedApps" -}}
+{{- $names := list -}}
+{{- range $app, $cfg := .Values.apps -}}
+{{- if ne $cfg.enabled false -}}
+{{- $names = append $names $app -}}
+{{- end -}}
+{{- end -}}
+{{- join " " $names -}}
+{{- end -}}
+
+{{- /* Space-separated names of the deployed apps the chart grants a policy. */ -}}
+{{- define "hush-am-tutorial.policyApps" -}}
+{{- $names := list -}}
+{{- range $app, $cfg := .Values.apps -}}
+{{- if and (ne $cfg.enabled false) $cfg.privilege -}}
+{{- $names = append $names $app -}}
+{{- end -}}
+{{- end -}}
+{{- join " " $names -}}
+{{- end -}}
+
 {{- define "hush-am-tutorial.appServiceAccountName" -}}
 {{- printf "%s-sa" (include "hush-am-tutorial.appName" .) -}}
 {{- end -}}

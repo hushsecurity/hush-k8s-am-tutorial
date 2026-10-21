@@ -6,7 +6,7 @@ metadata:
   labels:
     app.kubernetes.io/instance: {{ .Release.Name }}
   annotations:
-    helm.sh/hook: post-install,post-upgrade
+    helm.sh/hook: post-install
     helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
     helm.sh/hook-weight: "5"
 spec:
@@ -34,7 +34,7 @@ spec:
             - |
               set -u
               HUSH_NS={{ .Values.hush.namespace }}
-              POLICIES="{{ range $app, $_ := .Values.apps }}{{ include "hush-am-tutorial.appName" (list $ $app) }} {{ end }}"
+              POLICIES="{{ range $app := include "hush-am-tutorial.policyApps" . | splitList " " | compact }}{{ include "hush-am-tutorial.appName" (list $ $app) }} {{ end }}"
 
               for POLICY in $POLICIES; do
                 echo "Waiting for Hush AM to reconcile AccessPolicy/${POLICY}..."

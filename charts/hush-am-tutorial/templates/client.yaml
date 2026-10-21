@@ -2,10 +2,8 @@
 One copy of the same client per example app. Each runs as its own service
 account, which is what its AccessPolicy attests.
 */}}
-{{- range $i, $app := keys .Values.apps | sortAlpha }}
-{{- if $i }}
+{{- range $app := include "hush-am-tutorial.deployedApps" . | splitList " " | compact }}
 ---
-{{- end }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:

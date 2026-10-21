@@ -62,7 +62,8 @@ spec:
       - object_type: TABLE
         privileges: [SELECT]
         object_names: ["invoices"]
-{{- range $app, $cfg := .Values.apps }}
+{{- range $app := include "hush-am-tutorial.policyApps" . | splitList " " | compact }}
+{{- $cfg := index $.Values.apps $app }}
 ---
 apiVersion: am.hush.security/v1alpha1
 kind: AccessPolicy

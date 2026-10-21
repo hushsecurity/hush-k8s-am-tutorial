@@ -19,13 +19,18 @@ client:
   # Leading characters of the injected password to print, so rotation is visible.
   secretRevealChars: 4
 
-# Example services, each running the same client as its own service account and
-# granted its own AccessPolicy with the named AccessPrivilege.
+# Example services, each running the same client as its own service account.
+# An app with a privilege is granted its own AccessPolicy with that
+# AccessPrivilege; one without gets no policy from the chart.
 apps:
   billing:
     privilege: readwrite-all
   analytics:
     privilege: read-all
+  # For onboarding a new app: create its policy in Hush first, then deploy it
+  # with apps.refunds.enabled=true.
+  refunds:
+    enabled: false
 
 # Collects the apps' reports and serves a status page; reach it with
 # kubectl port-forward. It holds no credentials and no Kubernetes API access.
