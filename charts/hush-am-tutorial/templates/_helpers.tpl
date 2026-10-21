@@ -66,6 +66,33 @@
 {{- printf "http://%s.%s.svc.cluster.local:%v" (include "hush-am-tutorial.dashboardName" .) .Release.Namespace .Values.dashboard.port -}}
 {{- end -}}
 
+{{- /*
+The names the tutorial page shows in its commands and UI values, as JSON. It
+leaves out whether an app is enabled: enabling refunds must not change the
+dashboard's pod, or the prospect's port-forward to it would drop.
+*/ -}}
+{{- define "hush-am-tutorial.tutorialConfig" -}}
+{{- $apps := list -}}
+{{- range $app := keys .Values.apps | sortAlpha -}}
+{{- $cfg := index $.Values.apps $app -}}
+{{- $apps = append $apps (dict
+  "name" $app
+  "deployment" (include "hush-am-tutorial.appName" (list $ $app))
+  "serviceAccount" (include "hush-am-tutorial.appServiceAccountName" (list $ $app))
+  "policy" (ternary (include "hush-am-tutorial.appName" (list $ $app)) "" (not (empty $cfg.privilege)))
+  "privilege" (ternary (printf "%s-%s" (include "hush-am-tutorial.fullname" $) ($cfg.privilege | default "")) "" (not (empty $cfg.privilege)))) -}}
+{{- end -}}
+{{- toJson (dict
+  "namespace" .Release.Namespace
+  "release" .Release.Name
+  "chart" (dict "ref" .Values.dashboard.chartRef "version" .Chart.Version)
+  "hushNamespace" .Values.hush.namespace
+  "credential" .Values.hush.credentialName
+  "privileges" (list (printf "%s-readwrite-all" (include "hush-am-tutorial.fullname" .)) (printf "%s-read-all" (include "hush-am-tutorial.fullname" .)))
+  "dashboard" (dict "service" (include "hush-am-tutorial.dashboardName" .) "port" .Values.dashboard.port)
+  "apps" $apps) -}}
+{{- end -}}
+
 {{- define "hush-am-tutorial.hooksServiceAccountName" -}}
 {{- printf "%s-hooks" (include "hush-am-tutorial.fullname" .) -}}
 {{- end -}}

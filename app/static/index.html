@@ -1,28 +1,713 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Hush AM Tutorial</title>
-  <style>
-    body { margin: 16px; font: 14px/1.4 ui-monospace, monospace; background: #fff; color: #111; }
-    @media (prefers-color-scheme: dark) { body { background: #111; color: #eee; } }
-  </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Unified Access Management Tutorial</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+  /* Layout: a step bar on top; each step is a scene with the story on the left and the live table on the right. */
+  :root {
+    --bg: #ffffff;
+    --surface: #f3f5f9;
+    --surface-2: #e9edf4;
+    --ink: #0d0d26;
+    --text: #33334d;
+    --muted: #5a5a72;
+    --faint: #8a8aa0;
+    --line: #e1e4ec;
+    --accent: #4033d6;
+    --accent-soft: #eceaff;
+    --ok: #006b00;
+    --ok-soft: #e2f7e2;
+    --deny: #9c2f17;
+    --deny-soft: #fbe7e1;
+    --note: #7a5000;
+    --note-soft: #fff1cc;
+    --code-bg: #0d0d26;
+    --code-ink: #eef0f6;
+    --live: #00b800;
+    --sans: Inter, system-ui, -apple-system, "Segoe UI", Arial, sans-serif;
+    --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0b0b17; --surface: #15152a; --surface-2: #1d1d36; --ink: #f2f2fa; --text: #c8c8db; --muted: #9a9ab4;
+      --faint: #6f6f8a; --line: #26263f; --accent: #a9a0ff; --accent-soft: #242050; --ok: #7fe08a; --ok-soft: #12301b;
+      --deny: #ff9d86; --deny-soft: #3a1a13; --note: #ffd47a; --note-soft: #362a0f; --code-bg: #05050e; --code-ink: #e6e8f2;
+      --live: #3ee05a; color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0b0b17; --surface: #15152a; --surface-2: #1d1d36; --ink: #f2f2fa; --text: #c8c8db; --muted: #9a9ab4;
+    --faint: #6f6f8a; --line: #26263f; --accent: #a9a0ff; --accent-soft: #242050; --ok: #7fe08a; --ok-soft: #12301b;
+    --deny: #ff9d86; --deny-soft: #3a1a13; --note: #ffd47a; --note-soft: #362a0f; --code-bg: #05050e; --code-ink: #e6e8f2;
+    --live: #3ee05a; color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+  body { background: var(--bg); color: var(--text); font: 15px/1.55 var(--sans); -webkit-font-smoothing: antialiased; }
+  h1, h2, h3 { color: var(--ink); margin: 0; line-height: 1.2; text-wrap: balance; }
+  p { margin: 0; }
+  code { font-family: var(--mono); font-size: 0.86em; color: var(--ink); }
+  button { font: inherit; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .wrap { padding-left: max(24px, env(safe-area-inset-left, 0px)); padding-right: max(24px, env(safe-area-inset-right, 0px)); max-width: 1480px; margin: 0 auto; }
+
+  header { border-bottom: 1px solid var(--line); }
+  header .wrap { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; padding-block: 16px; }
+  .logo { color: var(--ink); width: 140px; height: 27px; display: block; flex: none; }
+  .logo svg { width: 100%; height: 100%; display: block; }
+  .product { font-weight: 600; color: var(--ink); padding-left: 16px; border-left: 1px solid var(--line); }
+  .live-chip { margin-left: auto; display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); }
+  .pulse { width: 8px; height: 8px; border-radius: 50%; background: var(--live); box-shadow: 0 0 0 0 var(--live); animation: beat 2s infinite; }
+  @keyframes beat { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--live) 55%, transparent); } 70% { box-shadow: 0 0 0 7px transparent; } 100% { box-shadow: 0 0 0 0 transparent; } }
+
+  /* Step bar */
+  nav.steps { border-bottom: 1px solid var(--line); background: var(--surface); }
+  nav.steps ol { list-style: none; margin: 0; padding-block: 0; display: flex; gap: 4px; overflow-x: auto; }
+  nav.steps button {
+    display: flex; align-items: center; gap: 10px; padding: 14px 16px 12px; border: 0; background: none; cursor: pointer;
+    color: var(--muted); border-bottom: 2px solid transparent; white-space: nowrap; font-weight: 500;
+  }
+  nav.steps button[aria-current="step"] { color: var(--ink); border-bottom-color: var(--accent); }
+  nav.steps .n { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-size: 12px; font-weight: 700; background: var(--surface-2); color: var(--ink); }
+  nav.steps button[aria-current="step"] .n { background: var(--accent); color: var(--bg); }
+  nav.steps .done .n { background: var(--ok-soft); color: var(--ok); }
+  nav.steps .opt { font-size: 11px; color: var(--faint); font-weight: 500; }
+
+  /* Scene */
+  main .wrap { display: grid; grid-template-columns: minmax(300px, 400px) minmax(0, 1fr); gap: 40px; padding-block: 32px 56px; }
+  @media (max-width: 980px) { main .wrap { grid-template-columns: minmax(0, 1fr); gap: 28px; } }
+  .story { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+  .eyebrow { font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--accent); }
+  .story h1 { font-size: 28px; font-weight: 700; letter-spacing: -0.4px; }
+  .story p { max-width: 60ch; }
+  .look { display: flex; flex-direction: column; gap: 10px; padding: 0; margin: 0; list-style: none; }
+  .look li { display: flex; gap: 12px; }
+  .look .pin { flex: none; width: 22px; height: 22px; border-radius: 6px; background: var(--accent-soft); color: var(--accent); font-size: 12px; font-weight: 700; display: grid; place-items: center; margin-top: 1px; }
+  .tasks { display: flex; flex-direction: column; gap: 14px; }
+  .task { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 12px; }
+  .task .box { width: 20px; height: 20px; margin-top: 2px; border-radius: 6px; border: 1.5px solid var(--faint); display: grid; place-items: center; color: transparent; font-size: 12px; }
+  .task.done .box { background: var(--ok); border-color: var(--ok); color: var(--bg); }
+  .task.done .what { color: var(--muted); }
+  .task .result { font-size: 13px; color: var(--ok); margin-top: 4px; }
+  .cmd { display: flex; gap: 8px; align-items: flex-start; margin-top: 8px; background: var(--code-bg); color: var(--code-ink); border-radius: 8px; padding: 10px 10px 10px 12px; }
+  .cmd code { color: inherit; flex: 1; min-width: 0; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 12.5px; }
+  .copy { flex: none; font-size: 12px; font-weight: 600; color: var(--code-ink); background: none; border: 1px solid #3a3a58; border-radius: 6px; padding: 2px 8px; cursor: pointer; }
+  .nav-row { display: flex; gap: 10px; margin-top: 8px; }
+  .btn { border: 1px solid var(--line); background: var(--bg); color: var(--ink); border-radius: 8px; padding: 8px 14px; font-weight: 600; cursor: pointer; }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: var(--bg); }
+  .btn:disabled { opacity: 0.6; cursor: default; }
+  .run { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin-top: 8px; }
+  .run .btn { padding: 6px 12px; font-size: 13.5px; }
+  .run-note { font-size: 13px; color: var(--muted); }
+  .run-note .err { color: var(--deny); }
+  .by-hand { margin-top: 6px; }
+  .by-hand summary { font-size: 12.5px; color: var(--muted); cursor: pointer; width: fit-content; }
+  .fields { border-collapse: collapse; font-size: 13px; width: 100%; }
+  .fields th { text-align: left; color: var(--muted); font-weight: 600; padding: 6px 12px 6px 0; white-space: nowrap; vertical-align: top; }
+  .fields td { padding: 6px 0; }
+  .fields tr + tr > * { border-top: 1px solid var(--line); }
+
+
+  /* Stage */
+  .stage { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
+  .stage-head { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+  .stage-head h2 { font-size: 17px; }
+  .stage-head .sub { font-size: 13px; color: var(--muted); }
+  .table-scroll { overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; }
+  table.apps { width: 100%; border-collapse: collapse; font-size: 13.5px; min-width: 560px; }
+  .apps th, .apps td { padding: 10px 12px; text-align: left; vertical-align: middle; transition: opacity 0.25s; }
+  .apps thead th { font-size: 11.5px; font-weight: 600; color: var(--muted); background: var(--surface); }
+  .apps thead tr.groups th { font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--faint); padding-bottom: 2px; border-bottom: 0; }
+  .apps thead tr.groups th.live-group { color: var(--ok); }
+  .apps thead tr.groups th .gdot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--live); margin-right: 6px; vertical-align: 1px; animation: beat 2s infinite; }
+  .apps thead tr.cols th { padding-top: 2px; border-bottom: 1px solid var(--line); }
+  .apps tbody tr + tr td { border-top: 1px solid var(--line); }
+  .apps .sep { border-left: 1px solid var(--line); }
+  .app-name { font-weight: 700; color: var(--ink); font-size: 14.5px; }
+  .pod { font-family: var(--mono); font-size: 11.5px; color: var(--faint); }
+  .ident { font-family: var(--mono); font-size: 12px; color: var(--ink); }
+  .grant { display: inline-block; margin-top: 3px; font-size: 11.5px; font-weight: 700; padding: 1px 8px; border-radius: 999px; }
+  .grant.rw { color: var(--ok); background: var(--ok-soft); }
+  .grant.ro { color: var(--accent); background: var(--accent-soft); }
+  .grant.none { color: var(--muted); background: var(--surface-2); }
+  .user { font-family: var(--mono); font-size: 12px; color: var(--ink); }
+  .pw { font-family: var(--mono); font-size: 11.5px; color: var(--faint); }
+  .rev { display: inline-block; font-size: 11px; font-weight: 700; color: var(--accent); background: var(--accent-soft); padding: 0 7px; border-radius: 999px; margin-left: 6px; }
+  .rev.old { color: var(--note); background: var(--note-soft); }
+  td.op { text-align: center; min-width: 70px; }
+  .mark { font-weight: 700; font-size: 13px; display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 6px; }
+  .mark.ok { color: var(--ok); background: var(--ok-soft); }
+  .mark.no { color: var(--deny); background: var(--deny-soft); }
+  .mark.blocked { color: var(--accent); background: var(--accent-soft); font-weight: 600; }
+  .pwsnip { font-size: 12px; color: var(--muted); margin-left: 6px; }
+  .alive { display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; color: var(--muted); margin-top: 3px; font-variant-numeric: tabular-nums; }
+  .sa { font-size: 11.5px; color: var(--faint); margin-top: 3px; font-family: var(--mono); }
+  .rule { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; }
+  .rule .sa { margin-top: 0; color: var(--muted); }
+  .rule .then { display: flex; align-items: center; gap: 6px; color: var(--faint); font-size: 12px; }
+  .rule .then .grant { margin-top: 0; }
+  .received { border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 6px 14px; font-size: 13px; }
+  .received .k { font-family: var(--mono); font-size: 12px; color: var(--muted); }
+  .received .v { font-family: var(--mono); font-size: 12px; color: var(--ink); overflow-wrap: anywhere; }
+  .received .cap { grid-column: 1 / -1; font-size: 12.5px; color: var(--muted); }
+  .actions { display: flex; flex-direction: column; gap: 16px; margin: 0; padding: 0; list-style: none; counter-reset: act; }
+  .actions > li { display: grid; grid-template-columns: 26px minmax(0, 1fr); gap: 12px; counter-increment: act; }
+  .actions > li::before { content: counter(act); width: 24px; height: 24px; border-radius: 50%; background: var(--surface-2); color: var(--ink); font-size: 12px; font-weight: 700; display: grid; place-items: center; }
+  .actions > li.seen::before { content: "✓"; background: var(--ok-soft); color: var(--ok); }
+  .expect { font-size: 13px; color: var(--muted); margin-top: 6px; }
+  .expect b { color: var(--text); font-weight: 600; }
+  .seen-note { font-size: 12.5px; color: var(--ok); margin-top: 4px; font-weight: 600; }
+  .aside { font-size: 13px; color: var(--muted); border-left: 3px solid var(--accent-soft); padding-left: 12px; }
+  .when { white-space: nowrap; font-size: 12.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .when .pulse { display: inline-block; margin-right: 6px; vertical-align: 1px; }
+  tr.flash td { animation: flash 0.9s ease-out; }
+  @keyframes flash { from { background: color-mix(in srgb, var(--live) 14%, transparent); } to { background: transparent; } }
+  tr.ghost td { color: var(--faint); background: repeating-linear-gradient(135deg, transparent 0 8px, color-mix(in srgb, var(--surface-2) 60%, transparent) 8px 16px); }
+  tr.ghost .app-name { color: var(--muted); }
+  .nocred { color: var(--note); font-size: 12px; }
+
+  /* Focus: dim what the current step is not about */
+  .apps.focus-delivered .c-ident, .apps.focus-delivered .c-op { opacity: 0.38; }
+  .apps.focus-access .c-deliv { opacity: 0.38; }
+  .apps tr.dim td { opacity: 0.3; }
+  .apps th.hl { color: var(--accent); }
+  .apps thead tr.groups th.hl { color: var(--accent); }
+
+  .legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: 12px; color: var(--muted); }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+
+  /* Revisions lanes (step 3) */
+  .lanes { display: flex; flex-direction: column; gap: 10px; }
+  .lane { display: grid; grid-template-columns: 150px minmax(0, 1fr) auto; gap: 14px; align-items: center; border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; }
+  .lane .label { font-weight: 700; color: var(--ink); }
+  .lane .label small { display: block; font-family: var(--mono); font-weight: 400; font-size: 11px; color: var(--faint); overflow-wrap: anywhere; }
+  .chips { display: flex; gap: 8px; flex-wrap: wrap; min-height: 26px; align-items: center; }
+  .chip { font-family: var(--mono); font-size: 11.5px; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 999px; padding: 2px 10px; display: inline-flex; gap: 6px; align-items: center; }
+  .chip::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--live); }
+  .chips .none { font-size: 12px; color: var(--faint); }
+  .state { font-size: 12px; font-weight: 600; padding: 2px 10px; border-radius: 999px; white-space: nowrap; }
+  .state.inuse { color: var(--ok); background: var(--ok-soft); }
+  .state.new { color: var(--accent); background: var(--accent-soft); }
+  .state.unused { color: var(--note); background: var(--note-soft); }
+  @media (max-width: 560px) { .lane { grid-template-columns: minmax(0, 1fr); } }
+
+  @media (prefers-reduced-motion: reduce) {
+    .pulse, .gdot, tr.flash td { animation: none !important; }
+  }
+  html, body { margin: 0; }
+  .live-chip.down { color: var(--deny); }
+  .live-chip.down .pulse { background: var(--deny); animation: none; }
+  .hint { font-size: 11.5px; color: var(--faint); }
+  .val { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; vertical-align: middle; }
+  .val code { min-width: 0; overflow-wrap: anywhere; }
+  .copy.mini { flex: none; color: var(--accent); border-color: var(--line); background: var(--bg); padding: 0 7px; font-size: 11px; }
+  .copy.mini:hover { border-color: var(--accent); }
+  .warn { font-size: 13px; color: var(--note); background: var(--note-soft); border-radius: 8px; padding: 8px 10px; margin-top: 10px; }
+  .empty { font-size: 13px; color: var(--muted); }
+  .subhead { font-size: 20px; margin-top: 8px; }
+  .mark.idle { color: var(--faint); }
+  .state.removed { color: var(--muted); background: var(--surface-2); }
+  .lane.removed .label { color: var(--faint); text-decoration: line-through; }
+</style>
 </head>
 <body>
-  <p>Live status from <code>/status</code>.</p>
-  <pre id="status">loading...</pre>
-  <script>
-    async function refresh() {
-      try {
-        const response = await fetch("/status", { cache: "no-store" });
-        document.getElementById("status").textContent = JSON.stringify(await response.json(), null, 2);
-      } catch (error) {
-        document.getElementById("status").textContent = "dashboard unreachable: " + error;
-      }
+<header>
+  <div class="wrap">
+    <span class="logo" role="img" aria-label="Hush Security"><svg aria-hidden="true" focusable="false" viewBox="0 0 290 56" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" fill="none" overflow="hidden"><defs><linearGradient x1="31" y1="42.5459" x2="5.25264e-07" y2="11.0459" gradientUnits="userSpaceOnUse" id="paint0_linear_385_49155"><stop offset="0" stop-color="#FFC300"></stop><stop offset="1" stop-color="#FF2C2C"></stop></linearGradient><linearGradient x1="31" y1="42.5459" x2="5.25264e-07" y2="11.0459" gradientUnits="userSpaceOnUse" id="paint1_linear_385_49155"><stop offset="0" stop-color="#FFC300"></stop><stop offset="1" stop-color="#FF2C2C"></stop></linearGradient><linearGradient x1="31" y1="42.5459" x2="5.25264e-07" y2="11.0459" gradientUnits="userSpaceOnUse" id="paint2_linear_385_49155"><stop offset="0" stop-color="#FFC300"></stop><stop offset="1" stop-color="#FF2C2C"></stop></linearGradient><linearGradient x1="19.9999" y1="6.52243" x2="31.4992" y2="21.046" gradientUnits="userSpaceOnUse" id="paint3_linear_385_49155"><stop offset="0" stop-color="#4CBB17"></stop><stop offset="1" stop-color="#007AFF"></stop></linearGradient></defs><path d="M38.499 45.4854 38.499 13.624 44.7388 13.624 44.7388 26.3509 59.503 26.3509 59.503 13.6682 65.7428 13.6682 65.7428 45.4854 59.503 45.4854 59.503 32.0767 44.7388 32.0767 44.7388 45.4854 38.499 45.4854Z" fill="currentColor"></path><path d="M78.0942 46.0287C76.2716 46.0287 74.7275 45.6626 73.4681 44.9366 72.2088 44.2106 71.2405 43.0806 70.5761 41.5529 69.9053 40.0251 69.5762 38.0429 69.5762 35.6187L69.5762 22.7529 75.5882 22.7529 75.5882 34.3877C75.5882 35.9028 75.7654 37.0896 76.1134 37.9545 76.4615 38.8194 76.9614 39.438 77.6196 39.8168 78.2714 40.1956 79.0118 40.385 79.8282 40.385 81.4103 40.4165 82.6064 39.9367 83.4291 38.9519 84.2518 37.9671 84.6568 36.5341 84.6568 34.6591L84.6568 22.7529 90.6688 22.7529 90.6688 45.4795 85.0175 45.4795 84.7897 42.3862C84.0303 43.5351 83.081 44.4316 81.9419 45.0692 80.8028 45.7068 79.5181 46.0224 78.0942 46.0224L78.0942 46.0287Z" fill="currentColor"></path><path d="M102.562 46.0287C101.106 46.0287 99.7392 45.8078 98.4608 45.3722 97.1825 44.9303 96.0624 44.299 95.0878 43.4657 94.1132 42.6324 93.3538 41.6097 92.8096 40.3976L97.9609 38.0366C98.4165 38.7626 99.0367 39.3938 99.8278 39.9241 100.619 40.4544 101.53 40.7196 102.562 40.7196 103.593 40.7196 104.34 40.5744 104.884 40.2903 105.428 39.9999 105.707 39.5832 105.707 39.0403 105.707 38.4974 105.485 38.0934 105.049 37.8346 104.606 37.5757 104.011 37.3548 103.251 37.178L101.157 36.6351C98.9671 36.0606 97.2458 35.1452 95.9864 33.8827 94.7271 32.6264 94.0942 31.1807 94.0942 29.5394 94.0942 27.2036 94.8473 25.4044 96.3472 24.1292 97.8533 22.854 99.986 22.2227 102.752 22.2227 104.182 22.2227 105.511 22.4373 106.738 22.8603 107.966 23.2832 109.023 23.8766 109.903 24.6342 110.782 25.3918 111.39 26.2693 111.725 27.273L106.757 29.5457C106.542 28.9396 106.03 28.4472 105.207 28.0684 104.384 27.6897 103.568 27.5003 102.745 27.5003 101.922 27.5003 101.296 27.677 100.853 28.0242 100.41 28.3715 100.195 28.8512 100.195 29.4573 100.195 29.8487 100.404 30.177 100.834 30.4358 101.258 30.6946 101.866 30.9156 102.657 31.0923L105.618 31.8183C107.105 32.1845 108.302 32.7653 109.194 33.567 110.092 34.3687 110.744 35.2652 111.156 36.25 111.567 37.2348 111.769 38.1944 111.769 39.135 111.769 40.4986 111.364 41.7044 110.561 42.746 109.757 43.794 108.662 44.602 107.283 45.1765 105.903 45.751 104.327 46.0414 102.568 46.0414L102.562 46.0287Z" fill="currentColor"></path><path d="M113.496 45.4852 113.496 13.668 119.508 13.668 119.508 25.6689C120.267 24.5452 121.21 23.6929 122.331 23.0995 123.457 22.5061 124.716 22.2157 126.115 22.2157 127.938 22.2157 129.482 22.5818 130.741 23.3078 132 24.0338 132.969 25.1638 133.633 26.6916 134.304 28.2193 134.633 30.2016 134.633 32.6257L134.633 45.4915 128.621 45.4915 128.621 33.8567C128.621 32.3101 128.437 31.1169 128.077 30.2647 127.71 29.4188 127.21 28.8064 126.571 28.4213 125.931 28.0425 125.191 27.8531 124.337 27.8531 122.786 27.8216 121.596 28.295 120.761 29.2609 119.926 30.2331 119.508 31.6725 119.508 33.579L119.508 45.4852 113.496 45.4852Z" fill="currentColor"></path><path d="M149.535 46.028C147.744 46.028 146.168 45.8386 144.821 45.4599 143.466 45.0811 142.308 44.5571 141.334 43.8943 140.359 43.2251 139.562 42.4865 138.941 41.6658 138.321 40.8451 137.84 39.9866 137.505 39.0775L140.239 38.0295C140.758 39.4563 141.77 40.7062 143.289 41.7794 144.808 42.8526 146.662 43.3955 148.845 43.3955 151.643 43.3955 153.813 42.8589 155.364 41.7794 156.914 40.7062 157.686 39.2858 157.686 37.5308 157.686 35.7758 156.971 34.4817 155.547 33.4653 154.117 32.4489 152.269 31.6535 149.991 31.079L146.757 30.2583C145.358 29.8922 144.061 29.3745 142.859 28.6927 141.656 28.0109 140.694 27.1397 139.967 26.0792 139.239 25.0186 138.872 23.7181 138.872 22.1714 138.872 19.3243 139.783 17.1022 141.606 15.5113 143.428 13.9204 146.086 13.125 149.579 13.125 151.674 13.125 153.484 13.4785 155.003 14.1919 156.522 14.9052 157.743 15.7827 158.673 16.8307 159.604 17.8786 160.218 18.9266 160.521 19.9872L157.832 21.0351C157.161 19.3685 156.079 18.0743 154.573 17.1463 153.066 16.2247 151.25 15.7575 149.13 15.7575 146.884 15.7575 145.099 16.3004 143.776 17.3925 142.454 18.4847 141.796 19.9556 141.796 21.799 141.796 23.4656 142.314 24.7156 143.346 25.5489 144.378 26.3822 145.732 27.0135 147.403 27.4364L150.636 28.2066C153.858 28.9642 156.326 30.1699 158.041 31.8176 159.756 33.4716 160.616 35.2329 160.616 37.1142 160.616 38.7177 160.205 40.1949 159.389 41.5458 158.566 42.8968 157.338 43.9763 155.699 44.797 154.06 45.6177 152.01 46.0217 149.548 46.0217L149.535 46.028Z" fill="currentColor"></path><path d="M174.552 46.0282C172.363 46.0282 170.426 45.5232 168.743 44.5068 167.06 43.4904 165.737 42.0889 164.781 40.3024 163.826 38.5158 163.345 36.4515 163.345 34.122 163.345 31.7925 163.813 29.7282 164.756 27.9417 165.699 26.1551 166.996 24.7536 168.654 23.7372 170.312 22.7209 172.198 22.2158 174.325 22.2158 176.451 22.2158 178.311 22.7398 179.818 23.7814 181.324 24.8294 182.469 26.2687 183.26 28.0995 184.051 29.9302 184.444 32.0451 184.444 34.4377L166.034 34.4377C166.186 37.3164 167.028 39.5511 168.566 41.142 170.097 42.7329 172.097 43.5283 174.559 43.5283 176.318 43.5283 177.818 43.099 179.046 42.2341 180.273 41.3693 181.241 40.2582 181.938 38.8946L184.216 40.3024C183.64 41.4261 182.887 42.4172 181.963 43.2821 181.039 44.147 179.95 44.8225 178.704 45.3022 177.457 45.7883 176.077 46.0282 174.559 46.0282L174.552 46.0282ZM166.306 31.9377 181.482 31.9377C181.393 30.4858 181.039 29.2169 180.431 28.1437 179.824 27.0705 179.001 26.2245 177.97 25.6185 176.938 25.0125 175.723 24.7094 174.325 24.7094 172.926 24.7094 171.679 25.0125 170.496 25.6185 169.312 26.2245 168.344 27.0705 167.604 28.1626 166.857 29.2547 166.427 30.511 166.306 31.9377Z" fill="currentColor"></path><path d="M197.473 46.0282C195.284 46.0282 193.347 45.5232 191.664 44.5068 189.98 43.4904 188.658 42.0889 187.702 40.3024 186.747 38.5158 186.266 36.4515 186.266 34.122 186.266 31.7925 186.734 29.7282 187.677 27.9417 188.62 26.1551 189.93 24.7536 191.619 23.7372 193.303 22.7209 195.227 22.2158 197.385 22.2158 199.543 22.2158 201.454 22.6956 203.125 23.6489 204.795 24.6021 206.086 25.9278 206.998 27.626L204.631 28.9012C203.935 27.6008 202.954 26.5781 201.694 25.8331 200.435 25.0882 198.998 24.7221 197.391 24.7221 195.784 24.7221 194.303 25.1261 193.037 25.9278 191.778 26.7296 190.79 27.8343 190.075 29.2484 189.36 30.6562 189.006 32.285 189.006 34.1346 189.006 35.9843 189.373 37.6131 190.101 39.0209 190.828 40.4286 191.835 41.5334 193.107 42.3415 194.385 43.1432 195.841 43.5472 197.48 43.5472 199.119 43.5472 200.58 43.1306 201.853 42.2973 203.131 41.464 204.099 40.3024 204.77 38.8188L207.187 40.0941C206.276 41.9438 204.979 43.3957 203.289 44.4563 201.606 45.5169 199.669 46.0472 197.48 46.0472L197.473 46.0282Z" fill="currentColor"></path><path d="M218.661 46.0283C216.927 46.0283 215.389 45.6748 214.035 44.9614 212.68 44.248 211.617 43.1117 210.845 41.5524 210.073 39.9931 209.681 37.954 209.681 35.4415L209.681 22.7588 212.415 22.7588 212.415 34.3935C212.415 36.9061 212.712 38.8189 213.301 40.1194 213.895 41.4198 214.705 42.31 215.737 42.7771 216.768 43.2506 217.908 43.4842 219.154 43.4842 221.312 43.4842 222.996 42.6887 224.211 41.0979 225.426 39.507 226.033 37.2849 226.033 34.4377L226.033 22.7588 228.767 22.7588 228.767 45.4854 226.217 45.4854 226.078 41.9375C225.318 43.238 224.318 44.248 223.072 44.9614 221.825 45.6748 220.35 46.0283 218.654 46.0283L218.661 46.0283Z" fill="currentColor"></path><path d="M233.785 45.4859 233.785 22.7593 236.519 22.7593 236.519 26.7617C237.399 25.335 238.569 24.2996 240.025 23.6494 241.481 22.9992 242.999 22.6709 244.581 22.6709L244.581 25.1708C243.246 25.1708 241.961 25.4044 240.734 25.8779 239.506 26.345 238.493 27.1341 237.702 28.2389 236.911 29.3437 236.519 30.8525 236.519 32.759L236.519 45.4859 233.785 45.4859Z" fill="currentColor"></path><path d="M248.234 16.8491C247.746 16.8491 247.322 16.6661 246.955 16.3062 246.588 15.9401 246.411 15.5171 246.411 15.031 246.411 14.5134 246.595 14.0841 246.955 13.7369 247.322 13.3897 247.746 13.2129 248.234 13.2129 248.753 13.2129 249.183 13.3897 249.531 13.7369 249.879 14.0841 250.056 14.5197 250.056 15.031 250.056 15.5171 249.879 15.9401 249.531 16.3062 249.183 16.6724 248.746 16.8491 248.234 16.8491ZM246.816 45.4846 246.816 22.7581 249.55 22.7581 249.55 45.4846 246.816 45.4846Z" fill="currentColor"></path><path d="M263.088 46.0288C260.994 46.0288 259.355 45.4733 258.165 44.3685 256.981 43.2638 256.387 41.6919 256.387 39.6654L256.387 25.2593 252.33 25.2593 252.33 22.7594 256.387 22.7594 256.387 15.6699 259.12 15.6699 259.12 22.7594 266.366 22.7594 266.366 25.2593 259.12 25.2593 259.12 39.6654C259.12 40.8775 259.469 41.8244 260.171 42.5062 260.867 43.188 261.842 43.5289 263.088 43.5289 263.455 43.5289 263.81 43.4784 264.158 43.3711 264.506 43.2638 265.019 42.986 265.683 42.5315L266.822 44.8925C265.999 45.3786 265.316 45.6879 264.772 45.8268 264.227 45.9657 263.664 46.0288 263.088 46.0288Z" fill="currentColor"></path><path d="M270.879 55.1189C270.391 55.1189 269.816 55.0305 269.145 54.8475 268.474 54.6644 267.702 54.3929 266.822 54.0268L267.822 51.7099C268.613 52.0129 269.278 52.2402 269.828 52.3917 270.373 52.5432 270.803 52.619 271.107 52.619 271.986 52.619 272.708 52.3791 273.271 51.893 273.834 51.4069 274.296 50.744 274.663 49.8918L276.486 45.4854 266.873 22.7588 269.695 22.7588 277.897 42.2153 286.143 22.7588 289.016 22.7588 277.853 49.1216C277.308 50.3968 276.739 51.4763 276.144 52.3728 275.549 53.2692 274.84 53.951 274.005 54.4182 273.17 54.8853 272.132 55.1252 270.885 55.1252L270.879 55.1189Z" fill="currentColor"></path><path d="M17.4863 45.3545 31.4756 45.3545 31.4756 31.3994 17.4863 31.3994 17.4863 45.3545Z" fill="url(#paint0_linear_385_49155)"></path><path d="M6.99414 31.3975 17.4854 31.3975 17.4854 20.9316 6.99414 20.9316 6.99414 31.3975Z" fill="url(#paint1_linear_385_49155)"></path><path d="M0 13.9551 0 20.9326 6.99414 20.9316 6.99414 13.9551 0 13.9551Z" fill="url(#paint2_linear_385_49155)"></path><path d="M20.9844 10.4658 20.9844 20.9316 31.4756 20.9316 31.4756 10.4658 20.9844 10.4658ZM13.9883 3.48926 13.9883 10.4668 20.9824 10.4668 20.9824 3.48926 13.9883 3.48926Z" fill="url(#paint3_linear_385_49155)"></path></svg></span>
+    <span class="product">Unified Access Management Tutorial</span>
+    <span class="live-chip" id="live"><span class="pulse" aria-hidden="true"></span><span id="live-text">Connecting…</span></span>
+  </div>
+</header>
+
+<nav class="steps" aria-label="Tutorial steps">
+  <ol class="wrap" id="stepbar"></ol>
+</nav>
+
+<main>
+  <div class="wrap">
+    <section class="story" id="story" aria-live="polite"></section>
+    <section class="stage" aria-label="Live view">
+      <div class="stage-head">
+        <h2>Your apps, live</h2>
+        <span class="sub" id="stage-sub">Each pod reads and writes the invoices table every few seconds.</span>
+      </div>
+      <div class="table-scroll">
+        <table class="apps" id="apps">
+          <thead>
+            <tr class="groups">
+              <th class="g-app"></th>
+              <th class="g-ident sep">Policy</th>
+              <th class="g-deliv sep">Delivered by Hush at pod start</th>
+              <th class="g-live sep live-group" colspan="2"><span class="gdot" aria-hidden="true"></span>Live attempts</th>
+            </tr>
+            <tr class="cols">
+              <th>App</th>
+              <th class="c-ident sep">Matches → grants</th>
+              <th class="c-deliv sep">Database login</th>
+              <th class="c-op sep">read invoices</th>
+              <th class="c-op">write invoices</th>
+            </tr>
+          </thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </div>
+      <div class="legend" id="legend">
+        <span><span class="mark ok">✓</span> allowed</span>
+        <span><span class="mark blocked">✕ denied</span> denied by the policy</span>
+        <span><span class="mark no">✕ failed</span> failed, though the policy allows it</span>
+      </div>
+      <div id="extra"></div>
+    </section>
+  </div>
+</main>
+
+<script>
+  const STEPS = [
+    { key: "deployed", title: "Credentials, delivered" },
+    { key: "access", title: "Access per identity" },
+    { key: "rotate", title: "Rotation without downtime" },
+    { key: "onboard", title: "Onboard a new app", optional: true },
+    { key: "recap", title: "Recap" },
+  ];
+  const APP_ORDER = ["billing", "analytics", "refunds"];
+  const OPS = [["invoices", "read"], ["invoices", "write"]];
+  const POLL_MS = 2000;
+  const STEP_KEY = "hush-am-tutorial-step";
+
+  let status = null;
+  let fetchedAt = 0;
+  let step = initialStep();
+  let lastStory = "";
+  // What each button last did ({pending, ok, error}), and the open "run it yourself" commands.
+  const runs = {};
+  const openByHand = new Set();
+  const lastReport = {};
+  // Password hint per role, remembered after the pods that used it are gone.
+  const hints = {};
+
+  function initialStep() {
+    const fromHash = STEPS.findIndex((s) => `#${s.key}` === location.hash);
+    if (fromHash >= 0) return fromHash;
+    try {
+      const saved = Number(localStorage.getItem(STEP_KEY));
+      if (saved >= 0 && saved < STEPS.length) return saved;
+    } catch (error) { /* storage unavailable: start at the beginning */ }
+    return 0;
+  }
+
+  function saveStep() {
+    try { localStorage.setItem(STEP_KEY, String(step)); } catch (error) { /* not essential */ }
+  }
+
+  function esc(value) {
+    return String(value ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+  }
+
+  function parseRole(name) {
+    const match = /^_hush_(.+)_(\d+)$/.exec(name || "");
+    return match ? { policyId: match[1], revision: Number(match[2]) } : null;
+  }
+
+  const shortPod = (pod) => pod.split("-").pop();
+
+  // A value to type into the Hush UI, with its own copy button.
+  function val(text) {
+    return `<span class="val"><code>${esc(text)}</code><button class="copy mini" type="button" data-copy="${esc(text)}">Copy</button></span>`;
+  }
+
+  function cmd(text) {
+    return `<div class="cmd"><code>${esc(text)}</code><button class="copy" type="button" data-copy="${esc(text)}">Copy</button></div>`;
+  }
+
+  // A button the dashboard carries out, with the kubectl command that does the same.
+  function run(id, label, request, command) {
+    const state = runs[id] || {};
+    const note = state.pending ? "Working…"
+      : state.error ? `<span class="err">${esc(state.error)}</span>`
+      : state.ok ? "Done. Watch the table." : "";
+    return `<div class="run"><button class="btn primary" type="button" data-run="${id}"
+        data-request="${esc(JSON.stringify(request))}"${state.pending ? " disabled" : ""}>${label}</button>
+        <span class="run-note">${note}</span></div>
+      <details class="by-hand" data-key="${id}"${openByHand.has(id) ? " open" : ""}><summary>or run it yourself</summary>${cmd(command)}</details>`;
+  }
+
+  async function startRun(button) {
+    const id = button.dataset.run;
+    runs[id] = { pending: true };
+    render();
+    try {
+      // A JSON body: other sites cannot send one here without the dashboard's consent.
+      const response = await fetch("/action", {
+        method: "POST", headers: { "Content-Type": "application/json" }, body: button.dataset.request,
+      });
+      const reply = await response.json().catch(() => ({}));
+      runs[id] = response.ok ? { ok: true } : { error: reply.error || `HTTP ${response.status}` };
+    } catch (error) {
+      runs[id] = { error: "Dashboard unreachable" };
     }
-    refresh();
-    setInterval(refresh, 2000);
-  </script>
+    render();
+    if (runs[id].ok) setTimeout(() => { if (runs[id] && runs[id].ok) { delete runs[id]; render(); } }, 5000);
+  }
+
+  // ---- What the reports say ------------------------------------------------
+
+  function analyze() {
+    const cfg = status.tutorial || {};
+    const apps = cfg.apps || [];
+    const appCfg = (name) => apps.find((app) => app.name === name) || { name };
+    const pods = (status.pods || []).slice().sort((a, b) =>
+      ((APP_ORDER.indexOf(a.app) + 1) || 99) - ((APP_ORDER.indexOf(b.app) + 1) || 99) || a.pod.localeCompare(b.pod));
+    const podsOf = (name) => pods.filter((pod) => pod.app === name);
+
+    for (const pod of pods) {
+      const c = pod.credential;
+      if (c && c.username) hints[c.username] = c.passwordPreview;
+    }
+
+    const roles = (status.roles || []).map((role) => ({ ...role, ...parseRole(role.name) }));
+    const latest = {};
+    for (const role of roles) {
+      if (!role.retiredAt && role.policyId) latest[role.policyId] = Math.max(latest[role.policyId] || 0, role.revision);
+    }
+
+    const ops = (pod) => Object.fromEntries((pod.operations || []).map((op) => [`${op.operation}:${op.table}`, op.ok]));
+
+    const billingPods = podsOf("billing");
+    const billingRoles = billingPods.map((pod) => parseRole(pod.credential && pod.credential.username)).filter(Boolean);
+    const billingPolicy = billingRoles.length ? billingRoles[0].policyId : null;
+    const billingLatest = billingPolicy ? latest[billingPolicy] || 0 : 0;
+    const rotated = billingLatest > 1;
+    const onLatest = billingRoles.filter((role) => role.revision === billingLatest).length;
+
+    const refundsPods = podsOf("refunds");
+
+    return {
+      cfg, apps, appCfg, pods, podsOf, roles, latest, ops,
+      billing: {
+        pods: billingPods, policyId: billingPolicy, latest: billingLatest, rotated,
+        newInstance: rotated && onLatest > 0,
+        moved: rotated && billingRoles.length > 0 && onLatest === billingRoles.length,
+      },
+      refunds: {
+        app: appCfg("refunds"),
+        pods: refundsPods,
+        admitted: refundsPods.some((pod) => pod.credential),
+        missing: refundsPods.filter((pod) => !pod.credential),
+      },
+    };
+  }
+
+  // ---- The steps -----------------------------------------------------------
+
+  function received(facts) {
+    const pod = facts.billing.pods.find((p) => p.credential);
+    if (!pod) return `<p class="empty">Waiting for billing to report…</p>`;
+    const c = pod.credential;
+    return `<div class="received">
+      <span class="cap">For example, billing's pod received these environment variables from Hush:</span>
+      <span class="k">POSTGRES_USERNAME</span><span class="v">${esc(c.username)}</span>
+      <span class="k">POSTGRES_PASSWORD</span><span class="v">${esc(c.passwordPreview)}•••••••••••••</span>
+    </div>`;
+  }
+
+  function action(seen, html, seenNote) {
+    return `<li class="${seen ? "seen" : ""}"><div>${html}${seen && seenNote ? `<p class="seen-note">✓ ${seenNote}</p>` : ""}</div></li>`;
+  }
+
+  function nav() {
+    const back = step > 0 ? `<button class="btn" type="button" data-go="${step - 1}">Back</button>` : "";
+    const next = step < STEPS.length - 1 ? `<button class="btn primary" type="button" data-go="${step + 1}">Next: ${STEPS[step + 1].title}</button>` : "";
+    return `<div class="nav-row">${back}${next}</div>`;
+  }
+
+  function renderStory(facts) {
+    const { cfg, billing, refunds } = facts;
+    const ns = cfg.namespace || "<namespace>";
+    const release = cfg.release || "<release>";
+    const chart = cfg.chart || {};
+    const billingApp = facts.appCfg("billing");
+    const s = STEPS[step];
+    const eyebrow = `<p class="eyebrow">Step ${step + 1} of ${STEPS.length}${s.optional ? " · optional" : ""}</p>`;
+    let body = "";
+
+    if (s.key === "deployed") {
+      body = `<h1>Two apps, each with its own policy</h1>
+        <p><b>billing</b> and <b>analytics</b> are example services sharing one Postgres database. The table shows them live.</p>
+        <ul class="look">
+          <li><span class="pin">1</span><p>Each app signs in to Postgres with its own login. Its deployment holds only the
+            database address, no credential.</p></li>
+          <li><span class="pin">2</span><p>Hush delivered that login (username and password) when the pod started,
+            after checking the pod's identity against its policy. Nobody created, stored or shared the password.</p></li>
+        </ul>
+        ${received(facts)}`;
+    } else if (s.key === "access") {
+      body = `<h1>Each app gets exactly what its policy grants</h1>
+        <p>Both apps run the same image. Hush verifies each pod's attributes with Kubernetes (here, its service account) and
+          applies the matching policy.</p>
+        <ul class="look">
+          <li><span class="pin">1</span><p><b>billing</b>: read + write → both succeed.</p></li>
+          <li><span class="pin">2</span><p><b>analytics</b>: read only → writes denied (it tries on purpose).</p></li>
+          <li><span class="pin">3</span><p>Neither app's code nor configuration mentions its policy.</p></li>
+        </ul>
+        <details class="by-hand" data-key="policies"${openByHand.has("policies") ? " open" : ""}><summary>View the policies</summary>
+          <p class="expect">In the Hush UI, under <b>Access &gt; Policies</b>, or as Kubernetes resources:</p>
+          ${cmd(`kubectl get accesspolicies -n ${cfg.hushNamespace || "hush-security"} -o yaml ${facts.appCfg("billing").policy} ${facts.appCfg("analytics").policy}`)}</details>`;
+    } else if (s.key === "rotate") {
+      const deploy = billingApp.deployment || "billing";
+      body = `<h1>Rotate billing's credential without downtime</h1>
+        <p>Hush rotates credentials on a schedule. Rotate one by hand to watch: running pods keep their revision, new pods
+          get the latest, and an unused revision is removed later.</p>
+        <ol class="actions">
+          ${action(billing.rotated, `<p>In the Hush UI, under <b>Access &gt; Policies</b>, open the policy <code>${esc(billingApp.policy || "billing")}</code> and click the
+            <b>Rotate</b> button in the top-right corner.</p>
+            <p class="expect"><b>Expected:</b> a new revision appears below the table. billing's pod stays on its revision and
+              keeps working.</p>`,
+            `Revision ${billing.latest} is here`)}
+          ${action(billing.newInstance, `<p>Start a second billing pod.</p>
+            ${run("scale-up", "Scale billing to 2", { app: "billing", action: "scale", replicas: 2 },
+              `kubectl scale deploy/${deploy} -n ${ns} --replicas=2`)}
+            <p class="expect"><b>Expected:</b> it starts on the new revision; the first pod stays on the old one. Both keep
+              working.</p>`, "A billing pod is on the new revision")}
+          ${action(billing.moved, `<p>Restart billing.</p>
+            ${run("restart", "Restart billing", { app: "billing", action: "restart" },
+              `kubectl rollout restart deploy/${deploy} -n ${ns}`)}
+            <p class="expect"><b>Expected:</b> all billing pods move to the new revision. The old one is unused, and Hush
+              removes it later.</p>`, "All billing pods are on the new revision")}
+        </ol>
+        ${billing.moved && billing.pods.length > 1 ? `<p class="expect">Back to one instance:</p>${run("scale-down", "Scale billing to 1",
+          { app: "billing", action: "scale", replicas: 1 }, `kubectl scale deploy/${deploy} -n ${ns} --replicas=1`)}` : ""}`;
+    } else if (s.key === "onboard") {
+      const app = refunds.app;
+      const privileges = cfg.privileges || [];
+      const upgrade = `helm upgrade ${release} ${chart.ref || "<chart>"} --version ${chart.version || "<version>"} -n ${ns} --reuse-values --set apps.refunds.enabled=true`;
+      const missing = refunds.missing.length
+        ? `<p class="warn">refunds started without a credential: no policy matched service account
+            <code>${esc(refunds.missing[0].serviceAccount)}</code> in namespace <code>${esc(refunds.missing[0].namespace)}</code>.
+            Check the policy's values, then restart refunds:</p>${run("restart-refunds", "Restart refunds",
+              { app: "refunds", action: "restart" }, `kubectl rollout restart deploy/${app.deployment} -n ${ns}`)}`
+        : "";
+      body = `<h1>Onboard a new app</h1>
+        <p>Grant <b>refunds</b> its access first, then deploy it. It starts with exactly what you granted.</p>
+        <p class="aside">Here you use the Hush UI. In production, policies are managed as code, for example as Kubernetes
+          resources or with Terraform.</p>
+        <ol class="actions">
+          ${action(false, `<p>In the Hush UI, under <b>Access &gt; Policies</b>, create a policy with:</p><table class="fields">
+              <tr><th>Name</th><td>${val(app.deployment)}<br><span class="hint">any name</span></td></tr>
+              <tr><th>Application</th><td>Postgres</td></tr>
+              <tr><th>Application connector</th><td>${val(cfg.credential)}<br><span class="hint">registered by the tutorial</span></td></tr>
+              <tr><th>Privilege</th><td>your choice:<br>${val(privileges[1])}<br>${val(privileges[0])}</td></tr>
+              <tr><th>Access condition</th><td><span class="hint">Namespace</span><br>${val(ns)}</td></tr>
+              <tr><th>Access condition</th><td><span class="hint">Service account</span><br>${val(app.serviceAccount)}</td></tr>
+              <tr><th>Delivery</th><td>Environment variables:<br>
+                <code>POSTGRES_USERNAME</code> ← <code>username</code>, <code>POSTGRES_PASSWORD</code> ← <code>password</code></td></tr></table>`)}
+          ${action(refunds.admitted, `<p>Deploy refunds.</p>${cmd(upgrade)}
+            <p class="expect"><b>Expected:</b> a refunds row appears with the access you chose.</p>${missing}`, "refunds started with a credential from its policy")}
+        </ol>`;
+    } else {
+      body = `<h1>What you just saw</h1>
+        <ul class="look">
+          <li><span class="pin">1</span><p><b>No credential to manage.</b> Hush delivered each app's login at pod start. Nobody
+            created, stored or shared it.</p></li>
+          <li><span class="pin">2</span><p><b>Access per identity.</b> Each app got exactly what its policy grants, based on the
+            identity Hush verified.</p></li>
+          <li><span class="pin">3</span><p><b>Rotation without downtime.</b> Running pods kept working while new ones got the
+            new revision.</p></li>
+          <li><span class="pin">4</span><p><b>Access ready before deploy</b> (step 4). A new app starts with the access prepared
+            for it.</p></li>
+        </ul>
+        <h2 class="subhead">Clean up</h2>
+        <p>If you created the refunds policy, delete it in the Hush UI first. It is not part of the Helm release.</p>
+        ${cmd(`helm uninstall ${release} -n ${ns}\nkubectl delete namespace ${ns}`)}
+        <p>This removes the apps, the database, and the tutorial's policies and privileges from Hush.</p>`;
+    }
+
+    const html = eyebrow + body + nav();
+    // Re-render only on change, so a click on Copy is never lost.
+    if (html !== lastStory) {
+      document.getElementById("story").innerHTML = html;
+      lastStory = html;
+    }
+  }
+
+  // ---- The table -----------------------------------------------------------
+
+  function grantOf(app) {
+    if (!app.privilege) return "ui";
+    return /readwrite/.test(app.privilege) ? "rw" : "ro";
+  }
+
+  function grantChip(grant) {
+    if (grant === "rw") return `<span class="grant rw">read + write</span>`;
+    if (grant === "ro") return `<span class="grant ro">read only</span>`;
+    return `<span class="grant none">your choice in the Hush UI</span>`;
+  }
+
+  // A policy as a rule: the pod attribute it matches here, then what it grants.
+  function rule(serviceAccount, grant) {
+    return `<div class="rule"><div class="sa">${esc(serviceAccount || "")}</div><div class="then">→ ${grantChip(grant)}</div></div>`;
+  }
+
+  function renderRows(facts) {
+    const sinceFetch = (Date.now() - fetchedAt) / 1000;
+    const key = STEPS[step].key;
+    const rows = facts.pods.map((pod) => {
+      const app = facts.appCfg(pod.app);
+      const grant = grantOf(app);
+      const c = pod.credential;
+      const role = parseRole(c && c.username);
+      const latest = role ? facts.latest[role.policyId] : null;
+      const old = role && latest && role.revision < latest;
+      const ago = Math.max(0, Math.round((pod.secondsSinceReport || 0) + sinceFetch));
+      const dim = (key === "rotate" && pod.app !== "billing") || (key === "onboard" && facts.refunds.pods.length && pod.app !== "refunds");
+      const flash = lastReport[pod.pod] && lastReport[pod.pod] !== pod.reportedAt;
+      lastReport[pod.pod] = pod.reportedAt;
+
+      const login = c
+        ? `<span class="rev${old ? " old" : ""}">revision ${role ? role.revision : "?"}</span><code class="pwsnip">${esc(c.passwordPreview)}••••</code>
+           ${old ? `<div class="sa">older revision, still valid</div>` : ""}`
+        : `<span class="nocred">no credential: no policy matched</span>`;
+
+      let cells;
+      if (!c || pod.error) {
+        cells = `<td class="op c-op sep" colspan="2"><span class="nocred">Postgres refused the connection</span></td>`;
+      } else {
+        const o = facts.ops(pod);
+        cells = OPS.map(([table, op], i) => {
+          const ok = o[`${op}:${table}`];
+          const allowed = grant === "rw" || (grant === "ro" && op === "read");
+          let mark = `<span class="mark idle">–</span>`;
+          if (ok === true) mark = `<span class="mark ok">✓</span>`;
+          else if (ok === false) mark = allowed ? `<span class="mark no">✕ failed</span>` : `<span class="mark blocked">✕ denied</span>`;
+          return `<td class="op c-op${i === 0 ? " sep" : ""}">${mark}</td>`;
+        }).join("");
+      }
+
+      return `<tr class="${flash ? "flash" : ""}${dim ? " dim" : ""}">
+        <td><div class="app-name">${esc(pod.app)}</div><div class="pod">pod ${esc(shortPod(pod.pod))}</div>
+          <div class="alive"><span class="pulse" aria-hidden="true"></span>tried ${ago}s ago</div></td>
+        <td class="c-ident sep">${rule(pod.serviceAccount, grant)}</td>
+        <td class="c-deliv sep">${login}</td>
+        ${cells}
+      </tr>`;
+    });
+
+    if (key === "onboard" && !facts.refunds.pods.length) {
+      rows.push(`<tr class="ghost"><td><div class="app-name">refunds</div><div class="pod">not deployed yet</div></td>
+        <td class="c-ident sep">${rule(facts.refunds.app.serviceAccount, "ui")}</td>
+        <td class="c-deliv sep">–</td><td class="op c-op sep">–</td><td class="op c-op">–</td></tr>`);
+    }
+    if (!rows.length) rows.push(`<tr><td colspan="5"><p class="empty">Waiting for the apps to report…</p></td></tr>`);
+    document.getElementById("rows").innerHTML = rows.join("");
+
+    const table = document.getElementById("apps");
+    table.className = "apps" + (key === "deployed" ? " focus-delivered" : key === "access" ? " focus-access" : "");
+    table.querySelectorAll("th").forEach((th) => th.classList.remove("hl"));
+    const hl = key === "deployed" || key === "rotate" ? ".c-deliv, .g-deliv" : key === "access" ? ".c-ident, .g-ident, .c-op, .g-live" : "";
+    if (hl) table.querySelectorAll(hl).forEach((th) => th.classList.add("hl"));
+  }
+
+  // ---- Revisions (step 3) --------------------------------------------------
+
+  function renderExtra(facts) {
+    const el = document.getElementById("extra");
+    const policyId = facts.billing.policyId;
+    if (STEPS[step].key !== "rotate" || !policyId) { el.innerHTML = ""; return; }
+
+    const revisions = facts.roles.filter((role) => role.policyId === policyId).sort((a, b) => a.revision - b.revision);
+    const lanes = revisions.map((role) => {
+      const users = facts.billing.pods.filter((pod) => pod.credential && pod.credential.username === role.name);
+      let state;
+      if (role.retiredAt) state = `<span class="state removed">removed from Postgres</span>`;
+      else if (users.length) state = `<span class="state inuse">in use</span>`;
+      else if (role.revision === facts.billing.latest) state = `<span class="state new">new, not used yet</span>`;
+      else state = `<span class="state unused">unused, removed in a later cleanup</span>`;
+      const hint = hints[role.name] ? `<code class="pwsnip">${esc(hints[role.name])}••••</code>` : "";
+      const chips = users.length ? users.map((pod) => `<span class="chip">pod ${esc(shortPod(pod.pod))}</span>`).join("") : `<span class="none">no pods</span>`;
+      return `<div class="lane${role.retiredAt ? " removed" : ""}"><div class="label">Revision ${role.revision}${hint}</div>
+        <div class="chips">${chips}</div>${state}</div>`;
+    });
+    el.innerHTML = `<div class="stage-head"><h2>billing's credential, by revision</h2>
+      <span class="sub">Which pods use each revision, read live from Postgres.</span></div>
+      <div class="lanes">${lanes.join("") || `<p class="empty">Waiting for billing to report…</p>`}</div>`;
+  }
+
+  function renderStepbar() {
+    document.getElementById("stepbar").innerHTML = STEPS.map((s, i) => `<li><button type="button" data-go="${i}"
+      ${i === step ? 'aria-current="step"' : ""} class="${i < step ? "done" : ""}"><span class="n">${i < step ? "✓" : i + 1}</span>
+      ${s.title}${s.optional ? ' <span class="opt">optional</span>' : ""}</button></li>`).join("");
+  }
+
+  // ---- Loop ----------------------------------------------------------------
+
+  function render() {
+    renderStepbar();
+    if (!status) return;
+    const facts = analyze();
+    renderStory(facts);
+    renderRows(facts);
+    renderExtra(facts);
+  }
+
+  function setLive(ok, text) {
+    document.getElementById("live").className = `live-chip${ok ? "" : " down"}`;
+    document.getElementById("live-text").textContent = text;
+  }
+
+  async function poll() {
+    try {
+      const response = await fetch("/status", { cache: "no-store" });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      status = await response.json();
+      fetchedAt = Date.now();
+      setLive(true, `Live · namespace ${(status.tutorial || {}).namespace || ""}`);
+      render();
+    } catch (error) {
+      setLive(false, "Dashboard unreachable. Is kubectl port-forward still running?");
+    }
+  }
+
+  document.addEventListener("click", async (event) => {
+    const go = event.target.closest("[data-go]");
+    if (go) {
+      step = Number(go.dataset.go);
+      saveStep();
+      lastStory = "";
+      render();
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      return;
+    }
+    const button = event.target.closest("[data-run]");
+    if (button) {
+      startRun(button);
+      return;
+    }
+    const copy = event.target.closest(".copy");
+    if (copy) {
+      try { await navigator.clipboard.writeText(copy.dataset.copy); copy.textContent = "Copied"; }
+      catch (error) { copy.textContent = "Select to copy"; }
+      setTimeout(() => { copy.textContent = "Copy"; }, 1500);
+    }
+  });
+
+  // "toggle" does not bubble; listen while it travels down instead.
+  document.addEventListener("toggle", (event) => {
+    const details = event.target;
+    if (!details.matches || !details.matches("details.by-hand")) return;
+    if (details.open) openByHand.add(details.dataset.key);
+    else openByHand.delete(details.dataset.key);
+  }, true);
+
+  renderStepbar();
+  poll();
+  setInterval(poll, POLL_MS);
+  // Between polls, keep the "tried Ns ago" counters moving.
+  setInterval(() => { if (status) renderRows(analyze()); }, 1000);
+</script>
 </body>
 </html>

@@ -3,8 +3,11 @@ import logging
 import os
 import signal
 import sys
+import ssl
 import threading
 import time
+import urllib.error
+import urllib.request
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
@@ -19,7 +22,14 @@ POLL_INTERVAL_SECONDS = int(os.getenv("POLL_INTERVAL_SECONDS", "15"))
 STALE_AFTER_CYCLES = int(os.getenv("STALE_AFTER_CYCLES", "3"))
 MAX_REQUEST_BYTES = 64 * 1024
 HUSH_ROLE_PREFIX = "_hush_"
+# Names the page needs for the commands and UI values it shows (set by the chart).
+TUTORIAL_CONFIG = json.loads(os.getenv("TUTORIAL_CONFIG") or "{}")
 STATIC_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
+SERVICE_ACCOUNT_DIR = "/var/run/secrets/kubernetes.io/serviceaccount"
+# The page is reached through kubectl port-forward; refusing other Host names
+# keeps a DNS-rebound site from posting actions as if it were the page.
+LOCAL_HOSTS = ("localhost", "127.0.0.1", "[::1]")
+MAX_REPLICAS = 2
 
 
 def now_iso() -> str:
@@ -103,6 +113,7 @@ class State:
 
             return {
                 "now": now_iso(),
+                "tutorial": TUTORIAL_CONFIG,
                 "pollIntervalSeconds": POLL_INTERVAL_SECONDS,
                 "pods": pods,
                 "roles": roles,
@@ -110,6 +121,61 @@ class State:
 
 
 STATE = State()
+
+
+def patch_deployment(name: str, subresource: str, patch: dict, content_type: str) -> None:
+    """PATCH one of the tutorial's deployments, as the dashboard's service account."""
+    namespace = TUTORIAL_CONFIG["namespace"]
+    url = "https://{}:{}/apis/apps/v1/namespaces/{}/deployments/{}{}".format(
+        os.environ["KUBERNETES_SERVICE_HOST"],
+        os.environ["KUBERNETES_SERVICE_PORT"],
+        namespace,
+        name,
+        subresource,
+    )
+    # The token is projected and refreshed by the kubelet; read it every time.
+    with open(os.path.join(SERVICE_ACCOUNT_DIR, "token")) as token_file:
+        token = token_file.read().strip()
+    request = urllib.request.Request(
+        url,
+        data=json.dumps(patch).encode("utf-8"),
+        method="PATCH",
+        headers={"Authorization": f"Bearer {token}", "Content-Type": content_type},
+    )
+    context = ssl.create_default_context(cafile=os.path.join(SERVICE_ACCOUNT_DIR, "ca.crt"))
+    with urllib.request.urlopen(request, context=context, timeout=10):
+        pass
+
+
+def run_action(payload: dict) -> str:
+    """Scale or restart a tutorial app, for the page's buttons."""
+    apps = {app["name"]: app for app in TUTORIAL_CONFIG.get("apps", [])}
+    app = apps.get(payload.get("app"))
+    if not app:
+        raise ValueError("unknown app")
+    deployment = app["deployment"]
+
+    if payload.get("action") == "scale":
+        replicas = payload.get("replicas")
+        if type(replicas) is not int or not 1 <= replicas <= MAX_REPLICAS:
+            raise ValueError(f"replicas must be 1 to {MAX_REPLICAS}")
+        patch_deployment(
+            deployment, "/scale", {"spec": {"replicas": replicas}}, "application/merge-patch+json"
+        )
+        return f"scaled {deployment} to {replicas}"
+
+    if payload.get("action") == "restart":
+        # What kubectl rollout restart does: a new pod template, so new pods.
+        patch_deployment(
+            deployment,
+            "",
+            {"spec": {"template": {"metadata": {"annotations": {
+                "kubectl.kubernetes.io/restartedAt": now_iso()}}}}},
+            "application/strategic-merge-patch+json",
+        )
+        return f"restarted {deployment}"
+
+    raise ValueError("unknown action")
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -145,7 +211,42 @@ class Handler(BaseHTTPRequestHandler):
         else:
             self._send(404, b"not found", "text/plain")
 
+    def _from_page(self) -> bool:
+        """Whether a request could only have come from the page itself.
+
+        Other sites the browser visits can post to localhost too. They cannot
+        send a JSON body without the browser first asking permission (a CORS
+        preflight), which this server never grants; the Host check stops a
+        site that rebinds its own name to 127.0.0.1.
+        """
+        host = (self.headers.get("Host") or "").rsplit(":", 1)[0]
+        content_type = (self.headers.get("Content-Type") or "").split(";")[0].strip()
+        return host in LOCAL_HOSTS and content_type == "application/json"
+
+    def _action(self) -> None:
+        if not self._from_page():
+            self._send_json(403, {"error": "open the page through localhost to use its buttons"})
+            return
+        try:
+            done = run_action(self._read_json())
+        except (ValueError, AttributeError) as exc:
+            self._send_json(400, {"error": str(exc)})
+            return
+        except urllib.error.HTTPError as exc:
+            reason = "not deployed" if exc.code == 404 else f"Kubernetes API answered {exc.code}"
+            self._send_json(502, {"error": reason})
+            return
+        except (OSError, KeyError) as exc:
+            logging.warning("Action failed: %s", exc)
+            self._send_json(502, {"error": "Kubernetes API unreachable"})
+            return
+        logging.info("Action: %s", done)
+        self._send_json(200, {"ok": True})
+
     def do_POST(self):
+        if self.path == "/action":
+            self._action()
+            return
         try:
             payload = self._read_json()
             if self.path == "/report":

@@ -1,0 +1,50 @@
+{{- /*
+For the page's buttons: scale and restart the tutorial's apps, nothing else.
+Limited to their deployments in this namespace; it cannot read them, their
+pods or any Secret.
+*/}}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ include "hush-am-tutorial.dashboardName" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: {{ include "hush-am-tutorial.name" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: dashboard
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ include "hush-am-tutorial.dashboardName" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: {{ include "hush-am-tutorial.name" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: dashboard
+rules:
+  - apiGroups: ["apps"]
+    resources: ["deployments", "deployments/scale"]
+    resourceNames:
+      {{- range $app := keys .Values.apps | sortAlpha }}
+      - {{ include "hush-am-tutorial.appName" (list $ $app) | quote }}
+      {{- end }}
+    verbs: ["patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ include "hush-am-tutorial.dashboardName" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: {{ include "hush-am-tutorial.name" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: dashboard
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ include "hush-am-tutorial.dashboardName" . }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "hush-am-tutorial.dashboardName" . }}
+    namespace: {{ .Release.Namespace }}

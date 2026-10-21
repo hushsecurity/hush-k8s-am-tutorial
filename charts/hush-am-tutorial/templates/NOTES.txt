@@ -1,0 +1,13 @@
+The tutorial is installed in namespace {{ .Release.Namespace }}.
+
+Open the tutorial page:
+
+  kubectl port-forward -n {{ .Release.Namespace }} svc/{{ include "hush-am-tutorial.dashboardName" . }} {{ .Values.dashboard.port }}:{{ .Values.dashboard.port }}
+
+then browse to http://localhost:{{ .Values.dashboard.port }} and follow the steps. If the page
+says the dashboard is unreachable, run the port-forward again.
+
+Uninstall (delete the refunds policy in the Hush UI first, if you created one):
+
+  helm uninstall {{ .Release.Name }} -n {{ .Release.Namespace }}
+  kubectl delete namespace {{ .Release.Namespace }}

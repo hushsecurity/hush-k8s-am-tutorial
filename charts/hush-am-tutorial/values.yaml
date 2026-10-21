@@ -32,10 +32,13 @@ apps:
   refunds:
     enabled: false
 
-# Collects the apps' reports and serves a status page; reach it with
-# kubectl port-forward. It holds no credentials and no Kubernetes API access.
+# Collects the apps' reports and serves the tutorial page; reach it with
+# kubectl port-forward. It holds no credentials; its only Kubernetes access is
+# scaling and restarting the tutorial's apps, for the page's buttons.
 dashboard:
   port: 8080
+  # Where the page's helm upgrade command installs the chart from.
+  chartRef: oci://ghcr.io/hushsecurity/hush-am-tutorial
 
 hooks:
   kubectlImage: alpine/kubectl:1.33.4
