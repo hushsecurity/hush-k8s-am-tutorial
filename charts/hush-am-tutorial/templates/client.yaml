@@ -42,6 +42,8 @@ spec:
           command: ["python"]
           args: ["client.py"]
           env:
+            - name: APP_NAME
+              value: {{ $app | quote }}
             - name: POSTGRES_HOST
               value: {{ include "hush-am-tutorial.postgresHost" $ | quote }}
             - name: POSTGRES_PORT
@@ -52,6 +54,12 @@ spec:
               value: {{ $.Values.client.pollIntervalSeconds | quote }}
             - name: SECRET_REVEAL_CHARS
               value: {{ $.Values.client.secretRevealChars | quote }}
+            - name: DASHBOARD_URL
+              value: {{ include "hush-am-tutorial.dashboardUrl" $ | quote }}
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
             - name: POD_NAMESPACE
               valueFrom:
                 fieldRef:

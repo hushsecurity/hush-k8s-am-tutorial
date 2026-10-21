@@ -27,6 +27,11 @@ apps:
   analytics:
     privilege: read-all
 
+# Collects the apps' reports and serves a status page; reach it with
+# kubectl port-forward. It holds no credentials and no Kubernetes API access.
+dashboard:
+  port: 8080
+
 hooks:
   kubectlImage: alpine/kubectl:1.33.4
   postgresReadyTimeoutSeconds: 300

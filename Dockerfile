@@ -5,7 +5,8 @@ WORKDIR /app
 COPY app/requirements.txt /app/requirements.txt
 RUN pip install --no-cache-dir -r /app/requirements.txt
 
-COPY app/client.py /app/client.py
+COPY app/client.py app/dashboard.py /app/
+COPY app/static /app/static
 
 # Unprivileged, so pods can run under the restricted Pod Security Standard. A
 # real account, since libpq looks up the OS user when no database user is set.

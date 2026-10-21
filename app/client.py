@@ -1,8 +1,11 @@
 import hashlib
+import json
 import logging
 import os
 import signal
 import threading
+import urllib.request
+from datetime import datetime, timezone
 from functools import partial
 
 import psycopg2
@@ -22,8 +25,12 @@ POLL_INTERVAL_SECONDS = int(os.getenv("POLL_INTERVAL_SECONDS", "15"))
 SECRET_REVEAL_CHARS = int(os.getenv("SECRET_REVEAL_CHARS", "4"))
 CONNECT_TIMEOUT_SECONDS = int(os.getenv("CONNECT_TIMEOUT_SECONDS", "5"))
 POD_NAMESPACE = os.getenv("POD_NAMESPACE", "<unknown>")
+POD_NAME = os.getenv("POD_NAME", "<unknown>")
 SERVICE_ACCOUNT = os.getenv("SERVICE_ACCOUNT", "<unknown>")
+APP_NAME = os.getenv("APP_NAME", "<unknown>")
+DASHBOARD_URL = os.getenv("DASHBOARD_URL", "").rstrip("/")
 TABLES = ("invoices",)
+HUSH_ROLE_PATTERN = r"\_hush\_%"
 
 
 def fingerprint(value: str) -> str:
@@ -91,21 +98,34 @@ def write_table(cursor, table: str, ref: str) -> str:
     return f"ref={ref}"
 
 
-def run_operation(conn, operation: str, table: str, work) -> bool:
+def run_operation(conn, operation: str, table: str, work) -> dict:
     try:
         with conn.cursor() as cursor:
             detail = work(cursor)
         conn.commit()
     except psycopg2.Error as exc:
         conn.rollback()
-        logging.error("%s %s: FAILED %s", operation, table, str(exc).strip())
-        return False
+        detail = str(exc).strip()
+        logging.error("%s %s: FAILED %s", operation, table, detail)
+        return {"operation": operation, "table": table, "ok": False, "detail": detail}
 
     logging.info("%s %s: OK %s", operation, table, detail)
-    return True
+    return {"operation": operation, "table": table, "ok": True, "detail": detail}
 
 
-def exercise_tables() -> None:
+def list_hush_roles(conn) -> list:
+    # pg_roles is readable by any role, so this needs no extra grant.
+    with conn.cursor() as cursor:
+        cursor.execute(
+            "SELECT rolname FROM pg_roles WHERE rolname LIKE %s ORDER BY rolname",
+            (HUSH_ROLE_PATTERN,),
+        )
+        roles = [row[0] for row in cursor.fetchall()]
+    conn.commit()
+    return roles
+
+
+def exercise_tables(result: dict) -> None:
     conn = psycopg2.connect(
         host=POSTGRES_HOST,
         port=POSTGRES_PORT,
@@ -121,13 +141,14 @@ def exercise_tables() -> None:
             db_user = cursor.fetchone()[0]
 
         logging.info("Connected to %s as %s", POSTGRES_DB, db_user)
+        result["connectedAs"] = db_user
 
-        outcomes = []
+        operations = result["operations"]
         for table in TABLES:
-            outcomes.append(
+            operations.append(
                 run_operation(conn, "read", table, partial(read_table, table=table))
             )
-            outcomes.append(
+            operations.append(
                 run_operation(
                     conn,
                     "write",
@@ -138,11 +159,99 @@ def exercise_tables() -> None:
 
         logging.info(
             "Cycle done: %s/%s operations succeeded",
-            sum(outcomes),
-            len(outcomes),
+            sum(op["ok"] for op in operations),
+            len(operations),
         )
+
+        result["hushRoles"] = list_hush_roles(conn)
     finally:
         conn.close()
+
+
+def run_cycle() -> dict:
+    result = {
+        "credential": None,
+        "connectedAs": None,
+        "operations": [],
+        "hushRoles": None,
+        "error": None,
+    }
+
+    # Every cycle, so tailing the log shows the credential in use.
+    if credentials_injected():
+        log_injected_credentials()
+        result["credential"] = {
+            "username": POSTGRES_USERNAME,
+            "passwordPreview": POSTGRES_PASSWORD[:SECRET_REVEAL_CHARS],
+            "passwordLength": len(POSTGRES_PASSWORD),
+            "fingerprint": fingerprint(POSTGRES_PASSWORD),
+        }
+    else:
+        log_missing_credentials()
+
+    # Without credentials this still tries, so the log shows Postgres refusing.
+    try:
+        exercise_tables(result)
+    except Exception as exc:
+        result["error"] = str(exc).strip()
+        logging.error("DB connection failed: %s", result["error"])
+
+    return result
+
+
+class DashboardReporter:
+    """Pushes each cycle's outcome to the dashboard; never fails the cycle."""
+
+    def __init__(self, url: str):
+        self.url = url
+        self.failing = False
+
+    def _post(self, path: str, payload: dict) -> None:
+        if not self.url:
+            return
+
+        request = urllib.request.Request(
+            f"{self.url}{path}",
+            data=json.dumps(payload).encode("utf-8"),
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        try:
+            with urllib.request.urlopen(request, timeout=2):
+                pass
+        except Exception as exc:
+            # Once per outage, so a missing dashboard does not flood the log.
+            if not self.failing:
+                logging.warning("Dashboard unreachable at %s: %s", self.url, exc)
+            self.failing = True
+            return
+
+        if self.failing:
+            logging.info("Dashboard reachable again")
+        self.failing = False
+
+    def report(self, result: dict) -> None:
+        delivered = [
+            name
+            for name in ("POSTGRES_USERNAME", "POSTGRES_PASSWORD")
+            if os.getenv(name)
+        ]
+        self._post(
+            "/report",
+            {
+                "pod": POD_NAME,
+                "app": APP_NAME,
+                "namespace": POD_NAMESPACE,
+                "serviceAccount": SERVICE_ACCOUNT,
+                "deliveredEnv": delivered,
+                "pollIntervalSeconds": POLL_INTERVAL_SECONDS,
+                "reportedAt": datetime.now(timezone.utc).isoformat(),
+                **result,
+            },
+        )
+
+    def goodbye(self) -> None:
+        self._post("/goodbye", {"pod": POD_NAME})
 
 
 def main() -> None:
@@ -150,21 +259,14 @@ def main() -> None:
     for signum in (signal.SIGTERM, signal.SIGINT):
         signal.signal(signum, lambda *_: stop.set())
 
+    reporter = DashboardReporter(DASHBOARD_URL)
+
     while not stop.is_set():
-        # Every cycle, so tailing the log shows the credential in use.
-        if credentials_injected():
-            log_injected_credentials()
-        else:
-            log_missing_credentials()
-
-        # Without credentials this still tries, so the log shows Postgres refusing.
-        try:
-            exercise_tables()
-        except Exception as exc:
-            logging.error("DB connection failed: %s", str(exc).strip())
-
+        reporter.report(run_cycle())
         stop.wait(POLL_INTERVAL_SECONDS)
 
+    # Lets the dashboard drop this pod at once instead of waiting for it to go stale.
+    reporter.goodbye()
     logging.info("Stopping")
 
 

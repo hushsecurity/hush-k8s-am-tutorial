@@ -36,6 +36,14 @@
 {{- printf "%s-sa" (include "hush-am-tutorial.appName" .) -}}
 {{- end -}}
 
+{{- define "hush-am-tutorial.dashboardName" -}}
+{{- printf "%s-dashboard" (include "hush-am-tutorial.fullname" .) -}}
+{{- end -}}
+
+{{- define "hush-am-tutorial.dashboardUrl" -}}
+{{- printf "http://%s.%s.svc.cluster.local:%v" (include "hush-am-tutorial.dashboardName" .) .Release.Namespace .Values.dashboard.port -}}
+{{- end -}}
+
 {{- define "hush-am-tutorial.hooksServiceAccountName" -}}
 {{- printf "%s-hooks" (include "hush-am-tutorial.fullname" .) -}}
 {{- end -}}
