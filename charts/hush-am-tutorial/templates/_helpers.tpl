@@ -32,22 +32,11 @@
 {{- printf "%s-%s" (include "hush-am-tutorial.fullname" (index . 0)) (index . 1) -}}
 {{- end -}}
 
-{{- /* Space-separated names of the apps that are deployed. */ -}}
-{{- define "hush-am-tutorial.deployedApps" -}}
-{{- $names := list -}}
-{{- range $app, $cfg := .Values.apps -}}
-{{- if ne $cfg.enabled false -}}
-{{- $names = append $names $app -}}
-{{- end -}}
-{{- end -}}
-{{- join " " $names -}}
-{{- end -}}
-
-{{- /* Space-separated names of the deployed apps the chart grants a policy. */ -}}
+{{- /* Space-separated names of the apps the chart grants a policy. */ -}}
 {{- define "hush-am-tutorial.policyApps" -}}
 {{- $names := list -}}
 {{- range $app, $cfg := .Values.apps -}}
-{{- if and (ne $cfg.enabled false) $cfg.privilege -}}
+{{- if $cfg.privilege -}}
 {{- $names = append $names $app -}}
 {{- end -}}
 {{- end -}}
@@ -66,11 +55,7 @@
 {{- printf "http://%s.%s.svc.cluster.local:%v" (include "hush-am-tutorial.dashboardName" .) .Release.Namespace .Values.dashboard.port -}}
 {{- end -}}
 
-{{- /*
-The names the tutorial page shows in its commands and UI values, as JSON. It
-leaves out whether an app is enabled: enabling refunds must not change the
-dashboard's pod, or the prospect's port-forward to it would drop.
-*/ -}}
+{{- /* The names the tutorial page shows in its commands and UI values, as JSON. */ -}}
 {{- define "hush-am-tutorial.tutorialConfig" -}}
 {{- $apps := list -}}
 {{- range $app := keys .Values.apps | sortAlpha -}}
@@ -85,7 +70,6 @@ dashboard's pod, or the prospect's port-forward to it would drop.
 {{- toJson (dict
   "namespace" .Release.Namespace
   "release" .Release.Name
-  "chart" (dict "ref" .Values.dashboard.chartRef "version" .Chart.Version)
   "hushNamespace" .Values.hush.namespace
   "credential" .Values.hush.credentialName
   "privileges" (list (printf "%s-readwrite-all" (include "hush-am-tutorial.fullname" .)) (printf "%s-read-all" (include "hush-am-tutorial.fullname" .)))

@@ -2,7 +2,7 @@
 One copy of the same client per example app. Each runs as its own service
 account, which is what its AccessPolicy attests.
 */}}
-{{- range $app := include "hush-am-tutorial.deployedApps" . | splitList " " | compact }}
+{{- range $app, $cfg := .Values.apps }}
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -14,7 +14,7 @@ metadata:
     app.kubernetes.io/instance: {{ $.Release.Name }}
     app.kubernetes.io/component: {{ $app }}
 spec:
-  replicas: 1
+  replicas: {{ hasKey $cfg "replicas" | ternary $cfg.replicas 1 }}
   selector:
     matchLabels:
       app.kubernetes.io/name: {{ include "hush-am-tutorial.name" $ }}

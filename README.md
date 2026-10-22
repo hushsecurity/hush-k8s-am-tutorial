@@ -35,8 +35,8 @@ dashboard, run the port-forward again.
 
 ## What it installs
 
-- In `husham-tutorial`: the billing and analytics apps (and refunds, once you
-  deploy it in step 4), Postgres, and the tutorial page.
+- In `husham-tutorial`: the billing and analytics apps, the refunds app (with
+  no pods until you deploy it in step 4), Postgres, and the tutorial page.
 - In Hush's namespace: a connector to that Postgres, two privileges, and one
   policy per app.
 

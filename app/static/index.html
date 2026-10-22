@@ -430,7 +430,6 @@
     const { cfg, billing, refunds } = facts;
     const ns = cfg.namespace || "<namespace>";
     const release = cfg.release || "<release>";
-    const chart = cfg.chart || {};
     const billingApp = facts.appCfg("billing");
     const s = STEPS[step];
     const eyebrow = `<p class="eyebrow">Step ${step + 1} of ${STEPS.length}${s.optional ? " · optional" : ""}</p>`;
@@ -485,7 +484,6 @@
     } else if (s.key === "onboard") {
       const app = refunds.app;
       const privileges = cfg.privileges || [];
-      const upgrade = `helm upgrade ${release} ${chart.ref || "<chart>"} --version ${chart.version || "<version>"} -n ${ns} --reuse-values --set apps.refunds.enabled=true`;
       const missing = refunds.missing.length
         ? `<p class="warn">refunds started without a credential: no policy matched service account
             <code>${esc(refunds.missing[0].serviceAccount)}</code> in namespace <code>${esc(refunds.missing[0].namespace)}</code>.
@@ -506,7 +504,9 @@
               <tr><th>Access condition</th><td><span class="hint">Service account</span><br>${val(app.serviceAccount)}</td></tr>
               <tr><th>Delivery</th><td>Environment variables:<br>
                 <code>POSTGRES_USERNAME</code> ← <code>username</code>, <code>POSTGRES_PASSWORD</code> ← <code>password</code></td></tr></table>`)}
-          ${action(refunds.admitted, `<p>Deploy refunds.</p>${cmd(upgrade)}
+          ${action(refunds.admitted, `<p>Once the policy is saved, deploy refunds.</p>
+            ${run("deploy-refunds", "Deploy refunds", { app: "refunds", action: "scale", replicas: 1 },
+              `kubectl scale deploy/${app.deployment} -n ${ns} --replicas=1`)}
             <p class="expect"><b>Expected:</b> a refunds row appears with the access you chose.</p>${missing}`, "refunds started with a credential from its policy")}
         </ol>`;
     } else {

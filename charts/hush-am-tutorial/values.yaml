@@ -27,18 +27,16 @@ apps:
     privilege: readwrite-all
   analytics:
     privilege: read-all
-  # For onboarding a new app: create its policy in Hush first, then deploy it
-  # with apps.refunds.enabled=true.
+  # For onboarding a new app: installed with no pods, until the page's step 4
+  # deploys it (scales it to 1) once its policy exists in Hush.
   refunds:
-    enabled: false
+    replicas: 0
 
 # Collects the apps' reports and serves the tutorial page; reach it with
 # kubectl port-forward. It holds no credentials; its only Kubernetes access is
 # scaling and restarting the tutorial's apps, for the page's buttons.
 dashboard:
   port: 8080
-  # Where the page's helm upgrade command installs the chart from.
-  chartRef: oci://ghcr.io/hushsecurity/hush-am-tutorial
 
 hooks:
   kubectlImage: alpine/kubectl:1.33.4
