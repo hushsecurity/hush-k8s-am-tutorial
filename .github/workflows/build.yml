@@ -1,0 +1,116 @@
+# Every push and pull request is checked and built. Pushes to main and to
+# *-ci branches also push the commit's image, for trying out unreleased
+# changes. On main, the version in Chart.yaml is released (image and chart)
+# unless it already is: to release, merge a commit that bumps version and
+# appVersion. The very first release needs a manual run on main with
+# first_release.
+name: Build and release
+
+on:
+  push:
+    branches:
+      - main
+      - "**-ci"
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      first_release:
+        description: "Very first release: no chart on ghcr yet"
+        type: boolean
+        default: false
+
+env:
+  HELM_VERSION: v4.3.1
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Check the manual run
+        if: inputs.first_release && github.ref != 'refs/heads/main'
+        run: |
+          echo "first_release only applies to a run on main" >&2
+          exit 1
+
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v5
+        with:
+          version: ${{ env.HELM_VERSION }}
+
+      - name: Check the chart
+        run: |
+          make check-version
+          helm lint charts/hush-am-tutorial
+          helm template tutorial charts/hush-am-tutorial > /dev/null
+
+      - name: Check the apps
+        run: python3 -I -m py_compile app/*.py
+
+      - name: Build image
+        run: make build
+
+  push:
+    name: Push
+    needs: build
+    # The branches the AWS role trusts.
+    if: >-
+      github.event_name != 'pull_request' &&
+      (github.ref == 'refs/heads/main' || endsWith(github.ref, '-ci'))
+    runs-on: ubuntu-latest
+    # One release at a time. While one runs, only the newest waiting run is
+    # kept: a skipped run's version bump is still in the newer commit, which
+    # then releases it.
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref }}
+      cancel-in-progress: false
+    permissions:
+      id-token: write
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v5
+        with:
+          version: ${{ env.HELM_VERSION }}
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: arn:aws:iam::116981795030:role/github-actions/hush-k8s-am-tutorial
+          aws-region: us-east-1
+
+      - name: Push the commit's image
+        run: make build submit
+
+      # Before any lookup: without read access ghcr cannot tell whether a
+      # version exists, and the release would stop.
+      - name: Log in to ghcr
+        if: github.ref == 'refs/heads/main'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: echo "$GITHUB_TOKEN" | helm registry login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+
+      - name: Check whether this version is released
+        if: github.ref == 'refs/heads/main'
+        id: version
+        env:
+          FIRST_RELEASE: ${{ inputs.first_release && '1' || '' }}
+        run: |
+          state=$(make -s release-state)
+          echo "This version is $state."
+          echo "state=$state" >> "$GITHUB_OUTPUT"
+
+      - name: Release
+        if: steps.version.outputs.state == 'unreleased'
+        env:
+          FIRST_RELEASE: ${{ inputs.first_release && '1' || '' }}
+        run: make publish
