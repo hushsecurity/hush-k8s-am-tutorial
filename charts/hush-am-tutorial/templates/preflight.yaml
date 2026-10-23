@@ -10,4 +10,20 @@ cluster: helm template and helm lint cannot see what is installed.
 {{- if not (lookup "v1" "Namespace" "" .Values.hush.namespace) }}
 {{- fail (printf "Namespace %s not found. Install Hush first, or set hush.namespace to the namespace it runs in." .Values.hush.namespace) }}
 {{- end }}
+{{- /*
+The tutorial's resources in the Hush namespace have fixed names, so it can be
+installed once per cluster. On install, a connector already there is either
+another install, or one Hush is still removing: it keeps a connector while any
+policy uses it, such as a refunds policy created in the Hush UI.
+*/}}
+{{- if .Release.IsInstall }}
+{{- $credential := lookup "am.hush.security/v1alpha1" "AccessCredential" .Values.hush.namespace .Values.hush.credentialName }}
+{{- if $credential }}
+{{- if $credential.metadata.deletionTimestamp }}
+{{- fail (printf "A previous install of the tutorial is still being removed from Hush (AccessCredential %s is being deleted). If you just uninstalled, wait a minute and install again. If it persists, a policy in Hush still uses it, such as the refunds policy from step 4: delete that policy in the Hush UI under Access > Policies." .Values.hush.credentialName) }}
+{{- end }}
+{{- $annotations := $credential.metadata.annotations | default dict }}
+{{- fail (printf "The tutorial is already installed in this cluster (release %s, namespace %s). It can only be installed once per cluster: uninstall it first." (index $annotations "meta.helm.sh/release-name" | default "unknown") (index $annotations "meta.helm.sh/release-namespace" | default "unknown")) }}
+{{- end }}
+{{- end }}
 {{- end }}
