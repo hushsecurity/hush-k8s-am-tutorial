@@ -99,11 +99,22 @@
   .cmd code { color: inherit; flex: 1; min-width: 0; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 12.5px; }
   .copy { flex: none; font-size: 12px; font-weight: 600; color: var(--code-ink); background: none; border: 1px solid #3a3a58; border-radius: 6px; padding: 2px 8px; cursor: pointer; }
   .nav-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 8px; }
-  .btn { border: 1px solid var(--line); background: var(--bg); color: var(--ink); border-radius: 8px; padding: 8px 14px; font-weight: 600; cursor: pointer; }
+  .btn { border: 1px solid var(--line); background: var(--bg); color: var(--ink); border-radius: 8px; padding: 8px 14px; font-weight: 600; cursor: pointer;
+    transition: transform 0.12s, box-shadow 0.12s, filter 0.12s; }
   .btn.primary { background: var(--accent); border-color: var(--accent); color: var(--bg); }
+  .btn:hover:not(:disabled) { filter: brightness(1.1); }
+  .btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   .btn:disabled { opacity: 0.6; cursor: default; }
   .run { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin-top: 8px; }
-  .run .btn { padding: 6px 12px; font-size: 13.5px; }
+  /* Buttons that change the cluster: an icon, and a raised look that presses down. */
+  .run .btn { display: inline-flex; align-items: center; gap: 8px;
+    box-shadow: 0 1px 2px rgb(0 0 0 / 0.18), 0 3px 8px color-mix(in srgb, var(--accent) 35%, transparent); }
+  .run .btn:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 2px 4px rgb(0 0 0 / 0.2), 0 6px 14px color-mix(in srgb, var(--accent) 40%, transparent); }
+  .run .btn:active:not(:disabled) { transform: translateY(1px); box-shadow: 0 1px 2px rgb(0 0 0 / 0.2); }
+  .run .btn .ico { width: 1em; text-align: center; font-size: 14px; line-height: 1; }
+  .spin { width: 12px; height: 12px; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: spin 0.8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) { .btn, .run .btn { transition: none; } .spin { animation-duration: 2.4s; } }
   .run-note { font-size: 13px; color: var(--muted); }
   .run-note .err { color: var(--deny); }
   .by-hand { margin-top: 6px; }
@@ -331,13 +342,17 @@
   }
 
   // A button the dashboard carries out, with the kubectl command that does the same.
+  // What each button does, at a glance: start, scale up or down, restart.
+  const RUN_ICONS = { "try-refunds": "▶", "deploy-refunds": "▶", "scale-up": "+", "scale-down": "−", "restart": "↻", "restart-refunds": "↻" };
+
   function run(id, label, request, command) {
     const state = runs[id] || {};
+    const icon = state.pending ? `<span class="spin" aria-hidden="true"></span>` : `<span class="ico" aria-hidden="true">${RUN_ICONS[id] || "▶"}</span>`;
     const note = state.pending ? "Working…"
       : state.error ? `<span class="err">${esc(state.error)}</span>`
       : state.ok ? "Done. Watch the table." : "";
     return `<div class="run"><button class="btn primary" type="button" data-run="${id}"
-        data-request="${esc(JSON.stringify(request))}"${state.pending ? " disabled" : ""}>${label}</button>
+        data-request="${esc(JSON.stringify(request))}"${state.pending ? " disabled" : ""}>${icon}${label}</button>
         <span class="run-note">${note}</span></div>
       <details class="by-hand" data-key="${id}"${openByHand.has(id) ? " open" : ""}><summary>or run it yourself</summary>${cmd(command)}</details>`;
   }
@@ -427,13 +442,13 @@
   }
 
   function nav(facts) {
-    const back = step > 0 ? `<button class="btn" type="button" data-go="${step - 1}">Back</button>` : "";
-    let next = step < STEPS.length - 1 ? `<button class="btn primary" type="button" data-go="${step + 1}">Next: ${STEPS[step + 1].title}</button>` : "";
+    const back = step > 0 ? `<button class="btn" type="button" data-go="${step - 1}">← Back</button>` : "";
+    let next = step < STEPS.length - 1 ? `<button class="btn primary" type="button" data-go="${step + 1}">Next: ${STEPS[step + 1].title} →</button>` : "";
     // refunds deployed in step 2 is removed on the way out, so the next steps start clean.
     if (STEPS[step].key === "access" && (refundsTried || facts.refunds.pods.length)) {
       const state = runs.leave || {};
       next = `<button class="btn primary" type="button" data-leave="${step + 1}"${state.pending ? " disabled" : ""}>Next:
-        ${STEPS[step + 1].title}</button>${state.pending ? `<span class="run-note">Removing refunds…</span>`
+        ${STEPS[step + 1].title} →</button>${state.pending ? `<span class="run-note">Removing refunds…</span>`
         : state.error ? `<span class="run-note"><span class="err">${esc(state.error)}</span></span>` : ""}`;
     }
     return `<div class="nav-row">${back}${next}</div>`;
