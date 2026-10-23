@@ -82,6 +82,13 @@ jobs:
         with:
           version: ${{ env.HELM_VERSION }}
 
+      # Lets the amd64 runner build the arm64 half of the images too.
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v6
         with:
@@ -89,7 +96,7 @@ jobs:
           aws-region: us-east-1
 
       - name: Push the commit's image
-        run: make build submit
+        run: make submit
 
       # Before any lookup: without read access ghcr cannot tell whether a
       # version exists, and the release would stop.
