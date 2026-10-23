@@ -218,7 +218,8 @@
   .live-chip.down { color: var(--deny); }
   .live-chip.down .pulse { background: var(--deny); animation: none; }
   .hint { font-size: 11.5px; color: var(--faint); }
-  .val { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; vertical-align: middle; }
+  /* A full-width line, so every Copy button lines up at the right, short values too. */
+  .val { display: inline-flex; align-items: center; justify-content: space-between; gap: 6px; width: 100%; vertical-align: middle; }
   .val code { min-width: 0; overflow-wrap: anywhere; }
   .copy.mini { flex: none; color: var(--accent); border-color: var(--line); background: var(--bg); padding: 0 7px; font-size: 11px; }
   .copy.mini:hover { border-color: var(--accent); }
