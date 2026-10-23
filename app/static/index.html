@@ -98,7 +98,7 @@
   .cmd { display: flex; gap: 8px; align-items: flex-start; margin-top: 8px; background: var(--code-bg); color: var(--code-ink); border-radius: 8px; padding: 10px 10px 10px 12px; }
   .cmd code { color: inherit; flex: 1; min-width: 0; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 12.5px; }
   .copy { flex: none; font-size: 12px; font-weight: 600; color: var(--code-ink); background: none; border: 1px solid #3a3a58; border-radius: 6px; padding: 2px 8px; cursor: pointer; }
-  .nav-row { display: flex; gap: 10px; margin-top: 8px; }
+  .nav-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 8px; }
   .btn { border: 1px solid var(--line); background: var(--bg); color: var(--ink); border-radius: 8px; padding: 8px 14px; font-weight: 600; cursor: pointer; }
   .btn.primary { background: var(--accent); border-color: var(--accent); color: var(--bg); }
   .btn:disabled { opacity: 0.6; cursor: default; }
@@ -160,9 +160,12 @@
   .actions > li { display: grid; grid-template-columns: 26px minmax(0, 1fr); gap: 12px; counter-increment: act; }
   .actions > li::before { content: counter(act); width: 24px; height: 24px; border-radius: 50%; background: var(--surface-2); color: var(--ink); font-size: 12px; font-weight: 700; display: grid; place-items: center; }
   .actions > li.seen::before { content: "✓"; background: var(--ok-soft); color: var(--ok); }
+  /* A lone action to try, after points to look at: a label and an arrow instead of a count. */
+  .try-label { font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--accent); }
+  .actions.try > li:not(.seen)::before { content: "▶"; font-size: 9px; color: var(--accent); }
   .expect { font-size: 13px; color: var(--muted); margin-top: 6px; }
   .expect b { color: var(--text); font-weight: 600; }
-  .seen-note { font-size: 12.5px; color: var(--ok); margin-top: 4px; font-weight: 600; }
+  .seen-note { display: flex; gap: 5px; font-size: 12.5px; color: var(--ok); margin-top: 4px; font-weight: 600; }
   .aside { font-size: 13px; color: var(--muted); border-left: 3px solid var(--accent-soft); padding-left: 12px; }
   .when { white-space: nowrap; font-size: 12.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
   .when .pulse { display: inline-block; margin-right: 6px; vertical-align: 1px; }
@@ -287,6 +290,8 @@
   // What each button last did ({pending, ok, error}), and the open "run it yourself" commands.
   const runs = {};
   const openByHand = new Set();
+  // Whether step 2 deployed refunds, so leaving it removes refunds even before its pod reports.
+  let refundsTried = false;
   const lastReport = {};
   // Password hint per role, remembered after the pods that used it are gone.
   const hints = {};
@@ -348,6 +353,7 @@
       });
       const reply = await response.json().catch(() => ({}));
       runs[id] = response.ok ? { ok: true } : { error: reply.error || `HTTP ${response.status}` };
+      if (response.ok && id === "try-refunds") refundsTried = true;
     } catch (error) {
       runs[id] = { error: "Dashboard unreachable" };
     }
@@ -417,12 +423,19 @@
   }
 
   function action(seen, html, seenNote) {
-    return `<li class="${seen ? "seen" : ""}"><div>${html}${seen && seenNote ? `<p class="seen-note">✓ ${seenNote}</p>` : ""}</div></li>`;
+    return `<li class="${seen ? "seen" : ""}"><div>${html}${seen && seenNote ? `<p class="seen-note"><span aria-hidden="true">✓</span><span>${seenNote}</span></p>` : ""}</div></li>`;
   }
 
-  function nav() {
+  function nav(facts) {
     const back = step > 0 ? `<button class="btn" type="button" data-go="${step - 1}">Back</button>` : "";
-    const next = step < STEPS.length - 1 ? `<button class="btn primary" type="button" data-go="${step + 1}">Next: ${STEPS[step + 1].title}</button>` : "";
+    let next = step < STEPS.length - 1 ? `<button class="btn primary" type="button" data-go="${step + 1}">Next: ${STEPS[step + 1].title}</button>` : "";
+    // refunds deployed in step 2 is removed on the way out, so the next steps start clean.
+    if (STEPS[step].key === "access" && (refundsTried || facts.refunds.pods.length)) {
+      const state = runs.leave || {};
+      next = `<button class="btn primary" type="button" data-leave="${step + 1}"${state.pending ? " disabled" : ""}>Next:
+        ${STEPS[step + 1].title}</button>${state.pending ? `<span class="run-note">Removing refunds…</span>`
+        : state.error ? `<span class="run-note"><span class="err">${esc(state.error)}</span></span>` : ""}`;
+    }
     return `<div class="nav-row">${back}${next}</div>`;
   }
 
@@ -456,7 +469,16 @@
         </ul>
         <details class="by-hand" data-key="policies"${openByHand.has("policies") ? " open" : ""}><summary>View the policies</summary>
           <p class="expect">In the Hush UI, under <b>Access &gt; Policies</b>, or as Kubernetes resources:</p>
-          ${cmd(`kubectl get accesspolicies -n ${cfg.hushNamespace || "hush-security"} -o yaml ${facts.appCfg("billing").policy} ${facts.appCfg("analytics").policy}`)}</details>`;
+          ${cmd(`kubectl get accesspolicies -n ${cfg.hushNamespace || "hush-security"} -o yaml ${facts.appCfg("billing").policy} ${facts.appCfg("analytics").policy}`)}</details>
+        <p class="try-label">Try it</p>
+        <ol class="actions try">
+          ${action(refunds.missing.length > 0, `<p><b>See an app no policy matches.</b> refunds runs the same image under its own
+            service account, and no policy names it.</p>
+            ${run("try-refunds", "Deploy refunds", { app: "refunds", action: "scale", replicas: 1 },
+              `kubectl scale deploy/${refunds.app.deployment} -n ${ns} --replicas=1`)}
+            <p class="expect"><b>Expected:</b> a refunds row appears with no credential, so Postgres refuses it.</p>`,
+            "refunds got no credential: no policy matched it.<br>Moving on removes it.")}
+        </ol>`;
     } else if (s.key === "rotate") {
       const deploy = billingApp.deployment || "billing";
       body = `<h1>Rotate billing's credential without downtime</h1>
@@ -527,7 +549,7 @@
         <p>This removes the apps, the database, and the tutorial's policies and privileges from Hush.</p>`;
     }
 
-    const html = eyebrow + body + nav();
+    const html = eyebrow + body + nav(facts);
     // Re-render only on change, so a click on Copy is never lost.
     if (html !== lastStory) {
       document.getElementById("story").innerHTML = html;
@@ -545,6 +567,7 @@
   function grantChip(grant) {
     if (grant === "rw") return `<span class="grant rw">read + write</span>`;
     if (grant === "ro") return `<span class="grant ro">read only</span>`;
+    if (grant === "none") return `<span class="grant none">no policy</span>`;
     return `<span class="grant none">your choice in the Hush UI</span>`;
   }
 
@@ -591,7 +614,7 @@
       return `<tr class="${flash ? "flash" : ""}${dim ? " dim" : ""}">
         <td><div class="app-name">${esc(pod.app)}</div><div class="pod">pod ${esc(shortPod(pod.pod))}</div>
           <div class="alive"><span class="pulse" aria-hidden="true"></span>tried ${ago}s ago</div></td>
-        <td class="c-ident sep">${rule(pod.serviceAccount, grant)}</td>
+        <td class="c-ident sep">${rule(pod.serviceAccount, !c && grant === "ui" ? "none" : grant)}</td>
         <td class="c-deliv sep">${login}</td>
         ${cells}
       </tr>`;
@@ -672,14 +695,43 @@
     }
   }
 
+  function goTo(target) {
+    step = target;
+    saveStep();
+    lastStory = "";
+    render();
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  async function removeRefundsAndGo(target) {
+    runs.leave = { pending: true };
+    render();
+    try {
+      const response = await fetch("/action", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ app: "refunds", action: "scale", replicas: 0 }),
+      });
+      const reply = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(reply.error || `HTTP ${response.status}`);
+    } catch (error) {
+      runs.leave = { error: `Could not remove refunds: ${error.message}` };
+      render();
+      return;
+    }
+    delete runs.leave;
+    refundsTried = false;
+    goTo(target);
+  }
+
   document.addEventListener("click", async (event) => {
     const go = event.target.closest("[data-go]");
     if (go) {
-      step = Number(go.dataset.go);
-      saveStep();
-      lastStory = "";
-      render();
-      window.scrollTo({ top: 0, behavior: "smooth" });
+      goTo(Number(go.dataset.go));
+      return;
+    }
+    const leave = event.target.closest("[data-leave]");
+    if (leave) {
+      removeRefundsAndGo(Number(leave.dataset.leave));
       return;
     }
     const button = event.target.closest("[data-run]");

@@ -157,8 +157,8 @@ def run_action(payload: dict) -> str:
 
     if payload.get("action") == "scale":
         replicas = payload.get("replicas")
-        if type(replicas) is not int or not 1 <= replicas <= MAX_REPLICAS:
-            raise ValueError(f"replicas must be 1 to {MAX_REPLICAS}")
+        if type(replicas) is not int or not 0 <= replicas <= MAX_REPLICAS:
+            raise ValueError(f"replicas must be 0 to {MAX_REPLICAS}")
         patch_deployment(
             deployment, "/scale", {"spec": {"replicas": replicas}}, "application/merge-patch+json"
         )
