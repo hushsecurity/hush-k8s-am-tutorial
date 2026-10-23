@@ -293,11 +293,14 @@
   const OPS = [["invoices", "read"], ["invoices", "write"]];
   const POLL_MS = 2000;
   const STEP_KEY = "hush-am-tutorial-step";
+  const BASE_KEY = "hush-am-tutorial-rotation-base";
 
   let status = null;
   let fetchedAt = 0;
   let step = initialStep();
   let lastStory = "";
+  // rotationBase's memory when browser storage is unavailable.
+  const rotationBases = {};
   // What each button last did ({pending, ok, error}), and the open "run it yourself" commands.
   const runs = {};
   const openByHand = new Set();
@@ -315,6 +318,25 @@
       if (saved >= 0 && saved < STEPS.length) return saved;
     } catch (error) { /* storage unavailable: start at the beginning */ }
     return 0;
+  }
+
+  // The revision billing's pods ran when step 3 was first shown, per policy.
+  // Rotating is judged against it, not against revision 1: Hush may already have
+  // made more revisions by then, and a rotation done earlier still counts.
+  function rotationBase(policyId, running, latest) {
+    let bases = {};
+    try {
+      const saved = JSON.parse(localStorage.getItem(BASE_KEY));
+      if (saved && typeof saved === "object") bases = saved;
+    } catch (error) { /* start fresh */ }
+    // A revision above any that exists was saved for an earlier install.
+    for (const store of [bases, rotationBases]) if (store[policyId] > latest) delete store[policyId];
+    if (!(policyId in bases) && !(policyId in rotationBases) && STEPS[step].key === "rotate") {
+      bases[policyId] = running;
+      try { localStorage.setItem(BASE_KEY, JSON.stringify(bases)); } catch (error) { /* kept for this page only */ }
+      rotationBases[policyId] = running;
+    }
+    return policyId in bases ? bases[policyId] : rotationBases[policyId];
   }
 
   function saveStep() {
@@ -403,7 +425,9 @@
     const billingRoles = billingPods.map((pod) => parseRole(pod.credential && pod.credential.username)).filter(Boolean);
     const billingPolicy = billingRoles.length ? billingRoles[0].policyId : null;
     const billingLatest = billingPolicy ? latest[billingPolicy] || 0 : 0;
-    const rotated = billingLatest > 1;
+    const base = billingPolicy && billingLatest
+      ? rotationBase(billingPolicy, Math.min(...billingRoles.map((role) => role.revision)), billingLatest) : undefined;
+    const rotated = base !== undefined && billingLatest > base;
     const onLatest = billingRoles.filter((role) => role.revision === billingLatest).length;
 
     const refundsPods = podsOf("refunds");
@@ -411,7 +435,7 @@
     return {
       cfg, apps, appCfg, pods, podsOf, roles, latest, ops,
       billing: {
-        pods: billingPods, policyId: billingPolicy, latest: billingLatest, rotated,
+        pods: billingPods, policyId: billingPolicy, latest: billingLatest, base, rotated,
         newInstance: rotated && onLatest > 0,
         moved: rotated && billingRoles.length > 0 && onLatest === billingRoles.length,
       },
@@ -657,7 +681,9 @@
     const policyId = facts.billing.policyId;
     if (STEPS[step].key !== "rotate" || !policyId) { el.innerHTML = ""; return; }
 
-    const revisions = facts.roles.filter((role) => role.policyId === policyId).sort((a, b) => a.revision - b.revision);
+    // Only from the revision step 3 started at: older ones are not part of this rotation.
+    const revisions = facts.roles.filter((role) => role.policyId === policyId && role.revision >= (facts.billing.base || 0))
+      .sort((a, b) => a.revision - b.revision);
     const lanes = revisions.map((role) => {
       const users = facts.billing.pods.filter((pod) => pod.credential && pod.credential.username === role.name);
       let state;
