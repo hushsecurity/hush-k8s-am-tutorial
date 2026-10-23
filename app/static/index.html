@@ -307,6 +307,8 @@
   const openByHand = new Set();
   // Whether step 2 deployed refunds, so leaving it removes refunds even before its pod reports.
   let refundsTried = false;
+  // Whether billing ran more than one pod, so step 3 offers to scale it back down.
+  let billingScaledUp = false;
   const lastReport = {};
   // Password hint per role, remembered after the pods that used it are gone.
   const hints = {};
@@ -481,6 +483,7 @@
 
   function renderStory(facts) {
     const { cfg, billing, refunds } = facts;
+    if (billing.pods.length > 1) billingScaledUp = true;
     const ns = cfg.namespace || "<namespace>";
     const release = cfg.release || "<release>";
     const billingApp = facts.appCfg("billing");
@@ -540,9 +543,10 @@
               `kubectl rollout restart deploy/${deploy} -n ${ns}`)}
             <p class="expect"><b>Expected:</b> all billing pods move to the new revision. The old one is unused, and Hush
               removes it later.</p>`, "All billing pods are on the new revision")}
-        </ol>
-        ${billing.moved && billing.pods.length > 1 ? `<p class="expect">Back to one instance:</p>${run("scale-down", "Scale billing to 1",
-          { app: "billing", action: "scale", replicas: 1 }, `kubectl scale deploy/${deploy} -n ${ns} --replicas=1`)}` : ""}`;
+          ${billingScaledUp ? action(billing.moved && billing.pods.length === 1, `<p>Back to one billing pod.</p>
+            ${run("scale-down", "Scale billing to 1", { app: "billing", action: "scale", replicas: 1 },
+              `kubectl scale deploy/${deploy} -n ${ns} --replicas=1`)}`, "billing is back to one pod") : ""}
+        </ol>`;
     } else if (s.key === "onboard") {
       const app = refunds.app;
       const privileges = cfg.privileges || [];
