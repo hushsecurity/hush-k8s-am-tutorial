@@ -86,6 +86,12 @@ class State:
         with self.lock:
             self.pods.pop(pod, None)
 
+    def clear(self) -> None:
+        """Forget everything, as a restart would: the pods report again within a cycle."""
+        with self.lock:
+            self.pods.clear()
+            self.roles.clear()
+
     def snapshot(self) -> dict:
         with self.lock:
             self._expire()
@@ -147,8 +153,42 @@ def patch_deployment(name: str, subresource: str, patch: dict, content_type: str
         pass
 
 
+def restart_deployment(name: str) -> None:
+    """What kubectl rollout restart does: a new pod template, so new pods."""
+    patch_deployment(
+        name,
+        "",
+        {"spec": {"template": {"metadata": {"annotations": {
+            "kubectl.kubernetes.io/restartedAt": now_iso()}}}}},
+        "application/strategic-merge-patch+json",
+    )
+
+
+def start_over() -> str:
+    """Bring every app back as installed, with new pods, and forget what was seen.
+
+    New pods start on their policy's latest credential revision, so a rotation
+    done before starting over is not taken for one done after.
+    """
+    for app in TUTORIAL_CONFIG.get("apps", []):
+        replicas = app.get("replicas", 1)
+        patch_deployment(
+            app["deployment"],
+            "/scale",
+            {"spec": {"replicas": replicas}},
+            "application/merge-patch+json",
+        )
+        if replicas:
+            restart_deployment(app["deployment"])
+    STATE.clear()
+    return "started over"
+
+
 def run_action(payload: dict) -> str:
-    """Scale or restart a tutorial app, for the page's buttons."""
+    """Scale or restart a tutorial app, or start over, for the page's buttons."""
+    if payload.get("action") == "start-over":
+        return start_over()
+
     apps = {app["name"]: app for app in TUTORIAL_CONFIG.get("apps", [])}
     app = apps.get(payload.get("app"))
     if not app:
@@ -165,14 +205,7 @@ def run_action(payload: dict) -> str:
         return f"scaled {deployment} to {replicas}"
 
     if payload.get("action") == "restart":
-        # What kubectl rollout restart does: a new pod template, so new pods.
-        patch_deployment(
-            deployment,
-            "",
-            {"spec": {"template": {"metadata": {"annotations": {
-                "kubectl.kubernetes.io/restartedAt": now_iso()}}}}},
-            "application/strategic-merge-patch+json",
-        )
+        restart_deployment(deployment)
         return f"restarted {deployment}"
 
     raise ValueError("unknown action")

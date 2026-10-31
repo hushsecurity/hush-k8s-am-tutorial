@@ -235,6 +235,18 @@
   .mark.idle { color: var(--faint); }
   .state.removed { color: var(--muted); background: var(--surface-2); }
   .lane.removed .label { color: var(--faint); text-decoration: line-through; }
+
+  /* Start over: a quiet button in the header, confirmed in a dialog. */
+  .btn.quiet { padding: 5px 12px; font-size: 13px; color: var(--muted); }
+  .btn.quiet:hover:not(:disabled) { color: var(--ink); border-color: var(--faint); }
+  dialog { width: min(440px, calc(100vw - 32px)); border: 1px solid var(--line); border-radius: 12px; padding: 22px 24px;
+    background: var(--bg); color: var(--text); box-shadow: 0 12px 40px rgb(0 0 0 / 0.25); }
+  dialog::backdrop { background: rgb(13 13 38 / 0.45); }
+  dialog form { display: flex; flex-direction: column; gap: 12px; }
+  dialog h2 { font-size: 19px; }
+  dialog .warn { margin-top: 0; }
+  dialog .nav-row { justify-content: flex-end; }
+  #start-over-confirm { display: inline-flex; align-items: center; gap: 8px; }
 </style>
 </head>
 <body>
@@ -243,8 +255,21 @@
     <span class="logo" role="img" aria-label="Hush Security"><svg aria-hidden="true" focusable="false" viewBox="0 0 290 56" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" fill="none" overflow="hidden"><defs><linearGradient x1="31" y1="42.5459" x2="5.25264e-07" y2="11.0459" gradientUnits="userSpaceOnUse" id="paint0_linear_385_49155"><stop offset="0" stop-color="#FFC300"></stop><stop offset="1" stop-color="#FF2C2C"></stop></linearGradient><linearGradient x1="31" y1="42.5459" x2="5.25264e-07" y2="11.0459" gradientUnits="userSpaceOnUse" id="paint1_linear_385_49155"><stop offset="0" stop-color="#FFC300"></stop><stop offset="1" stop-color="#FF2C2C"></stop></linearGradient><linearGradient x1="31" y1="42.5459" x2="5.25264e-07" y2="11.0459" gradientUnits="userSpaceOnUse" id="paint2_linear_385_49155"><stop offset="0" stop-color="#FFC300"></stop><stop offset="1" stop-color="#FF2C2C"></stop></linearGradient><linearGradient x1="19.9999" y1="6.52243" x2="31.4992" y2="21.046" gradientUnits="userSpaceOnUse" id="paint3_linear_385_49155"><stop offset="0" stop-color="#4CBB17"></stop><stop offset="1" stop-color="#007AFF"></stop></linearGradient></defs><path d="M38.499 45.4854 38.499 13.624 44.7388 13.624 44.7388 26.3509 59.503 26.3509 59.503 13.6682 65.7428 13.6682 65.7428 45.4854 59.503 45.4854 59.503 32.0767 44.7388 32.0767 44.7388 45.4854 38.499 45.4854Z" fill="currentColor"></path><path d="M78.0942 46.0287C76.2716 46.0287 74.7275 45.6626 73.4681 44.9366 72.2088 44.2106 71.2405 43.0806 70.5761 41.5529 69.9053 40.0251 69.5762 38.0429 69.5762 35.6187L69.5762 22.7529 75.5882 22.7529 75.5882 34.3877C75.5882 35.9028 75.7654 37.0896 76.1134 37.9545 76.4615 38.8194 76.9614 39.438 77.6196 39.8168 78.2714 40.1956 79.0118 40.385 79.8282 40.385 81.4103 40.4165 82.6064 39.9367 83.4291 38.9519 84.2518 37.9671 84.6568 36.5341 84.6568 34.6591L84.6568 22.7529 90.6688 22.7529 90.6688 45.4795 85.0175 45.4795 84.7897 42.3862C84.0303 43.5351 83.081 44.4316 81.9419 45.0692 80.8028 45.7068 79.5181 46.0224 78.0942 46.0224L78.0942 46.0287Z" fill="currentColor"></path><path d="M102.562 46.0287C101.106 46.0287 99.7392 45.8078 98.4608 45.3722 97.1825 44.9303 96.0624 44.299 95.0878 43.4657 94.1132 42.6324 93.3538 41.6097 92.8096 40.3976L97.9609 38.0366C98.4165 38.7626 99.0367 39.3938 99.8278 39.9241 100.619 40.4544 101.53 40.7196 102.562 40.7196 103.593 40.7196 104.34 40.5744 104.884 40.2903 105.428 39.9999 105.707 39.5832 105.707 39.0403 105.707 38.4974 105.485 38.0934 105.049 37.8346 104.606 37.5757 104.011 37.3548 103.251 37.178L101.157 36.6351C98.9671 36.0606 97.2458 35.1452 95.9864 33.8827 94.7271 32.6264 94.0942 31.1807 94.0942 29.5394 94.0942 27.2036 94.8473 25.4044 96.3472 24.1292 97.8533 22.854 99.986 22.2227 102.752 22.2227 104.182 22.2227 105.511 22.4373 106.738 22.8603 107.966 23.2832 109.023 23.8766 109.903 24.6342 110.782 25.3918 111.39 26.2693 111.725 27.273L106.757 29.5457C106.542 28.9396 106.03 28.4472 105.207 28.0684 104.384 27.6897 103.568 27.5003 102.745 27.5003 101.922 27.5003 101.296 27.677 100.853 28.0242 100.41 28.3715 100.195 28.8512 100.195 29.4573 100.195 29.8487 100.404 30.177 100.834 30.4358 101.258 30.6946 101.866 30.9156 102.657 31.0923L105.618 31.8183C107.105 32.1845 108.302 32.7653 109.194 33.567 110.092 34.3687 110.744 35.2652 111.156 36.25 111.567 37.2348 111.769 38.1944 111.769 39.135 111.769 40.4986 111.364 41.7044 110.561 42.746 109.757 43.794 108.662 44.602 107.283 45.1765 105.903 45.751 104.327 46.0414 102.568 46.0414L102.562 46.0287Z" fill="currentColor"></path><path d="M113.496 45.4852 113.496 13.668 119.508 13.668 119.508 25.6689C120.267 24.5452 121.21 23.6929 122.331 23.0995 123.457 22.5061 124.716 22.2157 126.115 22.2157 127.938 22.2157 129.482 22.5818 130.741 23.3078 132 24.0338 132.969 25.1638 133.633 26.6916 134.304 28.2193 134.633 30.2016 134.633 32.6257L134.633 45.4915 128.621 45.4915 128.621 33.8567C128.621 32.3101 128.437 31.1169 128.077 30.2647 127.71 29.4188 127.21 28.8064 126.571 28.4213 125.931 28.0425 125.191 27.8531 124.337 27.8531 122.786 27.8216 121.596 28.295 120.761 29.2609 119.926 30.2331 119.508 31.6725 119.508 33.579L119.508 45.4852 113.496 45.4852Z" fill="currentColor"></path><path d="M149.535 46.028C147.744 46.028 146.168 45.8386 144.821 45.4599 143.466 45.0811 142.308 44.5571 141.334 43.8943 140.359 43.2251 139.562 42.4865 138.941 41.6658 138.321 40.8451 137.84 39.9866 137.505 39.0775L140.239 38.0295C140.758 39.4563 141.77 40.7062 143.289 41.7794 144.808 42.8526 146.662 43.3955 148.845 43.3955 151.643 43.3955 153.813 42.8589 155.364 41.7794 156.914 40.7062 157.686 39.2858 157.686 37.5308 157.686 35.7758 156.971 34.4817 155.547 33.4653 154.117 32.4489 152.269 31.6535 149.991 31.079L146.757 30.2583C145.358 29.8922 144.061 29.3745 142.859 28.6927 141.656 28.0109 140.694 27.1397 139.967 26.0792 139.239 25.0186 138.872 23.7181 138.872 22.1714 138.872 19.3243 139.783 17.1022 141.606 15.5113 143.428 13.9204 146.086 13.125 149.579 13.125 151.674 13.125 153.484 13.4785 155.003 14.1919 156.522 14.9052 157.743 15.7827 158.673 16.8307 159.604 17.8786 160.218 18.9266 160.521 19.9872L157.832 21.0351C157.161 19.3685 156.079 18.0743 154.573 17.1463 153.066 16.2247 151.25 15.7575 149.13 15.7575 146.884 15.7575 145.099 16.3004 143.776 17.3925 142.454 18.4847 141.796 19.9556 141.796 21.799 141.796 23.4656 142.314 24.7156 143.346 25.5489 144.378 26.3822 145.732 27.0135 147.403 27.4364L150.636 28.2066C153.858 28.9642 156.326 30.1699 158.041 31.8176 159.756 33.4716 160.616 35.2329 160.616 37.1142 160.616 38.7177 160.205 40.1949 159.389 41.5458 158.566 42.8968 157.338 43.9763 155.699 44.797 154.06 45.6177 152.01 46.0217 149.548 46.0217L149.535 46.028Z" fill="currentColor"></path><path d="M174.552 46.0282C172.363 46.0282 170.426 45.5232 168.743 44.5068 167.06 43.4904 165.737 42.0889 164.781 40.3024 163.826 38.5158 163.345 36.4515 163.345 34.122 163.345 31.7925 163.813 29.7282 164.756 27.9417 165.699 26.1551 166.996 24.7536 168.654 23.7372 170.312 22.7209 172.198 22.2158 174.325 22.2158 176.451 22.2158 178.311 22.7398 179.818 23.7814 181.324 24.8294 182.469 26.2687 183.26 28.0995 184.051 29.9302 184.444 32.0451 184.444 34.4377L166.034 34.4377C166.186 37.3164 167.028 39.5511 168.566 41.142 170.097 42.7329 172.097 43.5283 174.559 43.5283 176.318 43.5283 177.818 43.099 179.046 42.2341 180.273 41.3693 181.241 40.2582 181.938 38.8946L184.216 40.3024C183.64 41.4261 182.887 42.4172 181.963 43.2821 181.039 44.147 179.95 44.8225 178.704 45.3022 177.457 45.7883 176.077 46.0282 174.559 46.0282L174.552 46.0282ZM166.306 31.9377 181.482 31.9377C181.393 30.4858 181.039 29.2169 180.431 28.1437 179.824 27.0705 179.001 26.2245 177.97 25.6185 176.938 25.0125 175.723 24.7094 174.325 24.7094 172.926 24.7094 171.679 25.0125 170.496 25.6185 169.312 26.2245 168.344 27.0705 167.604 28.1626 166.857 29.2547 166.427 30.511 166.306 31.9377Z" fill="currentColor"></path><path d="M197.473 46.0282C195.284 46.0282 193.347 45.5232 191.664 44.5068 189.98 43.4904 188.658 42.0889 187.702 40.3024 186.747 38.5158 186.266 36.4515 186.266 34.122 186.266 31.7925 186.734 29.7282 187.677 27.9417 188.62 26.1551 189.93 24.7536 191.619 23.7372 193.303 22.7209 195.227 22.2158 197.385 22.2158 199.543 22.2158 201.454 22.6956 203.125 23.6489 204.795 24.6021 206.086 25.9278 206.998 27.626L204.631 28.9012C203.935 27.6008 202.954 26.5781 201.694 25.8331 200.435 25.0882 198.998 24.7221 197.391 24.7221 195.784 24.7221 194.303 25.1261 193.037 25.9278 191.778 26.7296 190.79 27.8343 190.075 29.2484 189.36 30.6562 189.006 32.285 189.006 34.1346 189.006 35.9843 189.373 37.6131 190.101 39.0209 190.828 40.4286 191.835 41.5334 193.107 42.3415 194.385 43.1432 195.841 43.5472 197.48 43.5472 199.119 43.5472 200.58 43.1306 201.853 42.2973 203.131 41.464 204.099 40.3024 204.77 38.8188L207.187 40.0941C206.276 41.9438 204.979 43.3957 203.289 44.4563 201.606 45.5169 199.669 46.0472 197.48 46.0472L197.473 46.0282Z" fill="currentColor"></path><path d="M218.661 46.0283C216.927 46.0283 215.389 45.6748 214.035 44.9614 212.68 44.248 211.617 43.1117 210.845 41.5524 210.073 39.9931 209.681 37.954 209.681 35.4415L209.681 22.7588 212.415 22.7588 212.415 34.3935C212.415 36.9061 212.712 38.8189 213.301 40.1194 213.895 41.4198 214.705 42.31 215.737 42.7771 216.768 43.2506 217.908 43.4842 219.154 43.4842 221.312 43.4842 222.996 42.6887 224.211 41.0979 225.426 39.507 226.033 37.2849 226.033 34.4377L226.033 22.7588 228.767 22.7588 228.767 45.4854 226.217 45.4854 226.078 41.9375C225.318 43.238 224.318 44.248 223.072 44.9614 221.825 45.6748 220.35 46.0283 218.654 46.0283L218.661 46.0283Z" fill="currentColor"></path><path d="M233.785 45.4859 233.785 22.7593 236.519 22.7593 236.519 26.7617C237.399 25.335 238.569 24.2996 240.025 23.6494 241.481 22.9992 242.999 22.6709 244.581 22.6709L244.581 25.1708C243.246 25.1708 241.961 25.4044 240.734 25.8779 239.506 26.345 238.493 27.1341 237.702 28.2389 236.911 29.3437 236.519 30.8525 236.519 32.759L236.519 45.4859 233.785 45.4859Z" fill="currentColor"></path><path d="M248.234 16.8491C247.746 16.8491 247.322 16.6661 246.955 16.3062 246.588 15.9401 246.411 15.5171 246.411 15.031 246.411 14.5134 246.595 14.0841 246.955 13.7369 247.322 13.3897 247.746 13.2129 248.234 13.2129 248.753 13.2129 249.183 13.3897 249.531 13.7369 249.879 14.0841 250.056 14.5197 250.056 15.031 250.056 15.5171 249.879 15.9401 249.531 16.3062 249.183 16.6724 248.746 16.8491 248.234 16.8491ZM246.816 45.4846 246.816 22.7581 249.55 22.7581 249.55 45.4846 246.816 45.4846Z" fill="currentColor"></path><path d="M263.088 46.0288C260.994 46.0288 259.355 45.4733 258.165 44.3685 256.981 43.2638 256.387 41.6919 256.387 39.6654L256.387 25.2593 252.33 25.2593 252.33 22.7594 256.387 22.7594 256.387 15.6699 259.12 15.6699 259.12 22.7594 266.366 22.7594 266.366 25.2593 259.12 25.2593 259.12 39.6654C259.12 40.8775 259.469 41.8244 260.171 42.5062 260.867 43.188 261.842 43.5289 263.088 43.5289 263.455 43.5289 263.81 43.4784 264.158 43.3711 264.506 43.2638 265.019 42.986 265.683 42.5315L266.822 44.8925C265.999 45.3786 265.316 45.6879 264.772 45.8268 264.227 45.9657 263.664 46.0288 263.088 46.0288Z" fill="currentColor"></path><path d="M270.879 55.1189C270.391 55.1189 269.816 55.0305 269.145 54.8475 268.474 54.6644 267.702 54.3929 266.822 54.0268L267.822 51.7099C268.613 52.0129 269.278 52.2402 269.828 52.3917 270.373 52.5432 270.803 52.619 271.107 52.619 271.986 52.619 272.708 52.3791 273.271 51.893 273.834 51.4069 274.296 50.744 274.663 49.8918L276.486 45.4854 266.873 22.7588 269.695 22.7588 277.897 42.2153 286.143 22.7588 289.016 22.7588 277.853 49.1216C277.308 50.3968 276.739 51.4763 276.144 52.3728 275.549 53.2692 274.84 53.951 274.005 54.4182 273.17 54.8853 272.132 55.1252 270.885 55.1252L270.879 55.1189Z" fill="currentColor"></path><path d="M17.4863 45.3545 31.4756 45.3545 31.4756 31.3994 17.4863 31.3994 17.4863 45.3545Z" fill="url(#paint0_linear_385_49155)"></path><path d="M6.99414 31.3975 17.4854 31.3975 17.4854 20.9316 6.99414 20.9316 6.99414 31.3975Z" fill="url(#paint1_linear_385_49155)"></path><path d="M0 13.9551 0 20.9326 6.99414 20.9316 6.99414 13.9551 0 13.9551Z" fill="url(#paint2_linear_385_49155)"></path><path d="M20.9844 10.4658 20.9844 20.9316 31.4756 20.9316 31.4756 10.4658 20.9844 10.4658ZM13.9883 3.48926 13.9883 10.4668 20.9824 10.4668 20.9824 3.48926 13.9883 3.48926Z" fill="url(#paint3_linear_385_49155)"></path></svg></span>
     <span class="product">Unified Access Management Tutorial</span>
     <span class="live-chip" id="live"><span class="pulse" aria-hidden="true"></span><span id="live-text">Connecting…</span></span>
+    <button class="btn quiet" type="button" id="start-over">↺ Start over</button>
   </div>
 </header>
+
+<dialog id="start-over-dialog" aria-labelledby="start-over-title">
+  <form method="dialog">
+    <h2 id="start-over-title">Start over?</h2>
+    <p>The apps restart as they were installed, and the tutorial returns to step 1.</p>
+    <p class="run-note" id="start-over-failed" hidden><span class="err" id="start-over-error"></span></p>
+    <div class="nav-row">
+      <button class="btn" type="submit" value="cancel" id="start-over-cancel">Cancel</button>
+      <button class="btn primary" type="button" id="start-over-confirm">Start over</button>
+    </div>
+  </form>
+</dialog>
 
 <nav class="steps" aria-label="Tutorial steps">
   <ol class="wrap" id="stepbar"></ol>
@@ -313,8 +338,10 @@
   const openByHand = new Set();
   // Whether step 2 deployed refunds, so leaving it removes refunds even before its pod reports.
   let refundsTried = false;
-  // Whether billing ran more than one pod, so step 3 offers to scale it back down.
+  // Whether billing ran more than one pod in step 3, so step 3 offers to scale it back down.
   let billingScaledUp = false;
+  // Counts Start overs: a status reply to a request sent before the latest one is old.
+  let generation = 0;
   // Each pod's last report and its result, so a row moves only when its pod reports.
   const lastReport = {};
   const lastResult = {};
@@ -493,7 +520,7 @@
 
   function renderStory(facts) {
     const { cfg, billing, refunds } = facts;
-    if (billing.pods.length > 1) billingScaledUp = true;
+    if (STEPS[step].key === "rotate" && billing.pods.length > 1) billingScaledUp = true;
     const ns = cfg.namespace || "<namespace>";
     const release = cfg.release || "<release>";
     const billingApp = facts.appCfg("billing");
@@ -754,15 +781,18 @@
   }
 
   async function poll() {
+    const sentIn = generation;
     try {
       const response = await fetch("/status", { cache: "no-store" });
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      status = await response.json();
+      const reply = await response.json();
+      if (sentIn !== generation) return;
+      status = reply;
       fetchedAt = Date.now();
       setLive(true, `Live · namespace ${(status.tutorial || {}).namespace || ""}`);
       render();
     } catch (error) {
-      setLive(false, "Dashboard unreachable. Is kubectl port-forward still running?");
+      if (sentIn === generation) setLive(false, "Dashboard unreachable. Is kubectl port-forward still running?");
     }
   }
 
@@ -793,6 +823,78 @@
     refundsTried = false;
     goTo(target);
   }
+
+  // ---- Start over ------------------------------------------------------------
+
+  const startOverDialog = document.getElementById("start-over-dialog");
+  const startOverConfirm = document.getElementById("start-over-confirm");
+  const startOverCancel = document.getElementById("start-over-cancel");
+  // How long the dialog waits after starting over, so that step 1 opens with the restarted apps.
+  const RESTART_WAIT_MS = 6000;
+  const startOverError = document.getElementById("start-over-error");
+  const startOverFailed = document.getElementById("start-over-failed");
+
+  function openStartOver() {
+    startOverFailed.hidden = true;
+    startOverConfirm.disabled = false;
+    startOverCancel.disabled = false;
+    startOverConfirm.textContent = "Start over";
+    startOverDialog.showModal();
+  }
+
+  // Forget everything this page remembers, as on a first visit.
+  function forgetProgress() {
+    try {
+      localStorage.removeItem(STEP_KEY);
+      localStorage.removeItem(BASE_KEY);
+    } catch (error) { /* nothing was saved */ }
+    for (const store of [rotationBases, runs, lastReport, lastResult, hints]) {
+      for (const key of Object.keys(store)) delete store[key];
+    }
+    openByHand.clear();
+    refundsTried = false;
+    billingScaledUp = false;
+    status = null;
+    if (location.hash) history.replaceState(null, "", location.pathname + location.search);
+  }
+
+  async function startOver() {
+    startOverConfirm.disabled = true;
+    startOverCancel.disabled = true;
+    startOverConfirm.innerHTML = `<span class="spin" aria-hidden="true"></span>Restarting the apps…`;
+    startOverFailed.hidden = true;
+    let failure = "";
+    try {
+      const response = await fetch("/action", {
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "start-over" }),
+      });
+      const reply = await response.json().catch(() => ({}));
+      if (!response.ok) failure = reply.error || `HTTP ${response.status}`;
+    } catch (error) {
+      failure = "dashboard unreachable";
+    }
+    if (failure) {
+      startOverError.textContent = `Could not start over: ${failure}`;
+      startOverFailed.hidden = false;
+      startOverConfirm.disabled = false;
+      startOverCancel.disabled = false;
+      startOverConfirm.textContent = "Start over";
+      return;
+    }
+    await new Promise((resolve) => setTimeout(resolve, RESTART_WAIT_MS));
+    generation += 1;
+    forgetProgress();
+    startOverDialog.close();
+    document.getElementById("rows").innerHTML = `<tr><td colspan="5"><p class="empty">Waiting for the apps to report…</p></td></tr>`;
+    document.getElementById("extra").innerHTML = "";
+    goTo(0);
+    poll();
+  }
+
+  document.getElementById("start-over").addEventListener("click", openStartOver);
+  startOverConfirm.addEventListener("click", startOver);
+  // No closing with Escape while starting over.
+  startOverDialog.addEventListener("cancel", (event) => { if (startOverConfirm.disabled) event.preventDefault(); });
 
   document.addEventListener("click", async (event) => {
     const go = event.target.closest("[data-go]");

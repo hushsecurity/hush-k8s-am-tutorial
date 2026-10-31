@@ -64,6 +64,7 @@
   "name" $app
   "deployment" (include "hush-am-tutorial.appName" (list $ $app))
   "serviceAccount" (include "hush-am-tutorial.appServiceAccountName" (list $ $app))
+  "replicas" (hasKey $cfg "replicas" | ternary $cfg.replicas 1)
   "policy" (ternary (include "hush-am-tutorial.appName" (list $ $app)) "" (not (empty $cfg.privilege)))
   "privilege" (ternary (printf "%s-%s" (include "hush-am-tutorial.fullname" $) ($cfg.privilege | default "")) "" (not (empty $cfg.privilege)))) -}}
 {{- end -}}

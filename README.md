@@ -33,6 +33,9 @@ dashboard, run the port-forward again.
    deploy it with exactly that access.
 5. **Recap**, and how to clean up.
 
+**Start over**, at the top of the page, restarts the apps as they were
+installed and returns to step 1.
+
 ## What it installs
 
 - In `husham-tutorial`: the billing and analytics apps, the refunds app (with
