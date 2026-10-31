@@ -1,3 +1,6 @@
+import base64
+import binascii
+import hmac
 import json
 import logging
 import os
@@ -37,6 +40,12 @@ EXTRA_HOSTS = tuple(
     host.strip().lower() for host in os.getenv("ALLOWED_HOSTS", "").split(",") if host.strip()
 )
 MAX_REPLICAS = 2
+# When set, the page and its actions ask for this username and password (HTTP
+# Basic). The apps' reports never do: they come from inside the cluster.
+BASIC_AUTH = "BASIC_AUTH_USERNAME" in os.environ or "BASIC_AUTH_PASSWORD" in os.environ
+BASIC_AUTH_CREDENTIALS = "{}:{}".format(
+    os.getenv("BASIC_AUTH_USERNAME", ""), os.getenv("BASIC_AUTH_PASSWORD", "")
+).encode("utf-8")
 
 
 def now_iso() -> str:
@@ -244,7 +253,32 @@ class Handler(BaseHTTPRequestHandler):
 class PageHandler(Handler):
     """The page, its status and its buttons."""
 
+    def _signed_in(self) -> bool:
+        """Whether the request carries the page's username and password, when it has one."""
+        if not BASIC_AUTH:
+            return True
+        scheme, _, encoded = (self.headers.get("Authorization") or "").partition(" ")
+        if scheme.lower() != "basic":
+            return False
+        try:
+            given = base64.b64decode(encoded.strip(), validate=True)
+        except (binascii.Error, ValueError):
+            return False
+        return hmac.compare_digest(given, BASIC_AUTH_CREDENTIALS)
+
+    def _ask_to_sign_in(self) -> None:
+        body = b"sign in needed\n"
+        self.send_response(401)
+        self.send_header("WWW-Authenticate", 'Basic realm="Hush tutorial", charset="UTF-8"')
+        self.send_header("Content-Type", "text/plain")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
     def do_GET(self):
+        if self.path in ("/status", "/", "/index.html") and not self._signed_in():
+            self._ask_to_sign_in()
+            return
         if self.path == "/status":
             self._send_json(200, STATE.snapshot())
         elif self.path == "/healthz":
@@ -290,6 +324,9 @@ class PageHandler(Handler):
 
     def do_POST(self):
         if self.path == "/action":
+            if not self._signed_in():
+                self._ask_to_sign_in()
+                return
             self._action()
         else:
             self._send(404, b"not found", "text/plain")
@@ -324,6 +361,10 @@ class ReportHandler(Handler):
 def main() -> None:
     # As PID 1 the process ignores SIGTERM unless it installs a handler.
     signal.signal(signal.SIGTERM, lambda *_: sys.exit(0))
+    # A Secret with an empty key would otherwise leave the page open, or locked to everyone.
+    if BASIC_AUTH and not (os.getenv("BASIC_AUTH_USERNAME") and os.getenv("BASIC_AUTH_PASSWORD")):
+        logging.error("BASIC_AUTH_USERNAME and BASIC_AUTH_PASSWORD must both be set and non-empty")
+        sys.exit(1)
 
     reports = ThreadingHTTPServer(("", REPORT_PORT), ReportHandler)
     threading.Thread(target=reports.serve_forever, daemon=True).start()

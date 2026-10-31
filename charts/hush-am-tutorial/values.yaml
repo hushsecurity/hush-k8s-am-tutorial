@@ -45,6 +45,14 @@ dashboard:
   # Actions sent under any other name are refused, so a site that points its own
   # name at the dashboard cannot press the buttons.
   allowedHosts: []
+  # Ask for a username and password before showing the page or taking its
+  # actions, for a page others can reach: the name of a Secret in the release's
+  # namespace, with keys username and password. Off when empty, as through
+  # kubectl port-forward only those with access to the cluster reach it. Serve
+  # such a page over HTTPS, for example with TLS at the load balancer or
+  # ingress: the password is otherwise sent in the clear.
+  basicAuth:
+    existingSecret: ""
 
 hooks:
   kubectlImage: alpine/kubectl:1.33.4

@@ -36,6 +36,18 @@ dashboard, run the port-forward again.
 **Start over**, at the top of the page, restarts the apps as they were
 installed and returns to step 1.
 
+## Serving the page at its own address
+
+To reach the page without kubectl port-forward, such as behind a load
+balancer or ingress, expose only the `hush-am-tutorial-dashboard` Service
+(port 8080), and set:
+
+- `dashboard.allowedHosts`: the host names the page is served under. The
+  page's buttons are refused under any other name.
+- `dashboard.basicAuth.existingSecret`: a Secret in the tutorial's namespace,
+  with keys `username` and `password`, that the page then asks for. Serve the
+  page over HTTPS, so the password is not sent in the clear.
+
 ## What it installs
 
 - In `husham-tutorial`: the billing and analytics apps, the refunds app (with

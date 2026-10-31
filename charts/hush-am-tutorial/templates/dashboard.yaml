@@ -45,6 +45,18 @@ spec:
             - name: ALLOWED_HOSTS
               value: {{ join "," . | quote }}
             {{- end }}
+            {{- with .Values.dashboard.basicAuth.existingSecret }}
+            - name: BASIC_AUTH_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: {{ . }}
+                  key: username
+            - name: BASIC_AUTH_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ . }}
+                  key: password
+            {{- end }}
           ports:
             - containerPort: {{ .Values.dashboard.port }}
               name: http
