@@ -603,9 +603,9 @@
       const app = refunds.app;
       const privileges = cfg.privileges || [];
       const missing = refunds.missing.length
-        ? `<p class="warn">refunds started without a credential: no policy matched service account
-            <code>${esc(refunds.missing[0].serviceAccount)}</code> in namespace <code>${esc(refunds.missing[0].namespace)}</code>.
-            Check the policy's values, then restart refunds:</p>${run("restart-refunds", "Restart refunds",
+        ? `<p class="warn">refunds started without a credential: no policy matched it. In the Hush UI, check the
+            policy's access condition: <b>Namespace</b> <code>${esc(refunds.missing[0].namespace)}</code>, <b>Service account</b>
+            <code>${esc(refunds.missing[0].serviceAccount)}</code>. Then restart refunds:</p>${run("restart-refunds", "Restart refunds",
               { app: "refunds", action: "restart" }, `kubectl rollout restart deploy/${app.deployment} -n ${ns}`)}`
         : "";
       body = `<h1>Onboard a new app</h1>
