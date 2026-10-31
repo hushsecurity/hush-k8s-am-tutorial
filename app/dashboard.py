@@ -29,9 +29,13 @@ HUSH_ROLE_PREFIX = "_hush_"
 TUTORIAL_CONFIG = json.loads(os.getenv("TUTORIAL_CONFIG") or "{}")
 STATIC_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
 SERVICE_ACCOUNT_DIR = "/var/run/secrets/kubernetes.io/serviceaccount"
-# The page is reached through kubectl port-forward; refusing other Host names
-# keeps a DNS-rebound site from posting actions as if it were the page.
+# The page is reached through kubectl port-forward, or under the host names in
+# ALLOWED_HOSTS; refusing other Host names keeps a DNS-rebound site from posting
+# actions as if it were the page.
 LOCAL_HOSTS = ("localhost", "127.0.0.1", "[::1]")
+EXTRA_HOSTS = tuple(
+    host.strip().lower() for host in os.getenv("ALLOWED_HOSTS", "").split(",") if host.strip()
+)
 MAX_REPLICAS = 2
 
 
@@ -259,13 +263,14 @@ class PageHandler(Handler):
         preflight), which this server never grants; the Host check stops a
         site that rebinds its own name to 127.0.0.1.
         """
-        host = (self.headers.get("Host") or "").rsplit(":", 1)[0]
+        host = (self.headers.get("Host") or "").rsplit(":", 1)[0].lower()
         content_type = (self.headers.get("Content-Type") or "").split(";")[0].strip()
-        return host in LOCAL_HOSTS and content_type == "application/json"
+        return host in LOCAL_HOSTS + EXTRA_HOSTS and content_type == "application/json"
 
     def _action(self) -> None:
         if not self._from_page():
-            self._send_json(403, {"error": "open the page through localhost to use its buttons"})
+            where = "its usual address" if EXTRA_HOSTS else "localhost"
+            self._send_json(403, {"error": f"open the page through {where} to use its buttons"})
             return
         try:
             done = run_action(self._read_json())

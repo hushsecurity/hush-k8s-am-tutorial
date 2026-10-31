@@ -40,6 +40,11 @@ dashboard:
   # Where the apps send their reports: a Service of its own, inside the cluster
   # only, apart from the page's.
   reportPort: 8081
+  # Host names, besides localhost, to accept the page's buttons from: for a page
+  # served behind a load balancer or ingress rather than kubectl port-forward.
+  # Actions sent under any other name are refused, so a site that points its own
+  # name at the dashboard cannot press the buttons.
+  allowedHosts: []
 
 hooks:
   kubectlImage: alpine/kubectl:1.33.4

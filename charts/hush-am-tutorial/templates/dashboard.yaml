@@ -41,6 +41,10 @@ spec:
               value: {{ .Values.client.pollIntervalSeconds | quote }}
             - name: TUTORIAL_CONFIG
               value: {{ include "hush-am-tutorial.tutorialConfig" . | quote }}
+            {{- with .Values.dashboard.allowedHosts }}
+            - name: ALLOWED_HOSTS
+              value: {{ join "," . | quote }}
+            {{- end }}
           ports:
             - containerPort: {{ .Values.dashboard.port }}
               name: http

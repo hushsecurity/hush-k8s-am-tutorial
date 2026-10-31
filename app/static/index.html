@@ -327,6 +327,8 @@
   const POLL_MS = 2000;
   const STEP_KEY = "hush-am-tutorial-step";
   const BASE_KEY = "hush-am-tutorial-rotation-base";
+  // Opened through kubectl port-forward, rather than at an address of its own.
+  const LOCAL_PAGE = ["localhost", "127.0.0.1", "[::1]"].includes(location.hostname);
 
   let status = null;
   let fetchedAt = 0;
@@ -806,7 +808,10 @@
       setLive(true, `Live · namespace ${(status.tutorial || {}).namespace || ""}`);
       render();
     } catch (error) {
-      if (sentIn === generation) setLive(false, "Dashboard unreachable. Is kubectl port-forward still running?");
+      if (sentIn === generation) {
+        setLive(false, LOCAL_PAGE ? "Dashboard unreachable. Is kubectl port-forward still running?"
+          : "Dashboard unreachable. Reload the page.");
+      }
     }
   }
 
