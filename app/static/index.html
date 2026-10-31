@@ -263,6 +263,7 @@
   <form method="dialog">
     <h2 id="start-over-title">Start over?</h2>
     <p>The apps restart as they were installed, and the tutorial returns to step 1.</p>
+    <p class="warn" id="start-over-policy" hidden></p>
     <p class="run-note" id="start-over-failed" hidden><span class="err" id="start-over-error"></span></p>
     <div class="nav-row">
       <button class="btn" type="submit" value="cancel" id="start-over-cancel">Cancel</button>
@@ -405,7 +406,7 @@
 
   // A button the dashboard carries out, with the kubectl command that does the same.
   // What each button does, at a glance: start, scale up or down, restart.
-  const RUN_ICONS = { "try-refunds": "▶", "deploy-refunds": "▶", "scale-up": "+", "scale-down": "−", "restart": "↻", "restart-refunds": "↻" };
+  const RUN_ICONS = { "try-refunds": "▶", "deploy-refunds": "▶", "scale-up": "+", "scale-down": "−", "restart": "↻", "restart-refunds": "↻", "retry-refunds": "↻" };
 
   function run(id, label, request, command) {
     const state = runs[id] || {};
@@ -505,6 +506,18 @@
     return `<li class="${seen ? "seen" : ""}"><div>${html}${seen && seenNote ? `<p class="seen-note"><span aria-hidden="true">✓</span><span>${seenNote}</span></p>` : ""}</div></li>`;
   }
 
+  // refunds with a credential in step 2: from the policy created in step 4, or
+  // from one left in Hush by an earlier run, which keeps step 2 from showing an
+  // app without a policy.
+  function leftoverPolicy(refunds, ns) {
+    const pod = refunds.pods.find((p) => p.credential);
+    return `<p class="warn">refunds got a credential, so a policy in Hush matches its service account
+        <code>${esc(pod.serviceAccount)}</code>. If you created it in step 4, that's expected. Otherwise it's left from
+        an earlier run: delete it in the Hush UI under <b>Access &gt; Policies</b>, then restart refunds:</p>
+      ${run("retry-refunds", "Restart refunds", { app: "refunds", action: "restart" },
+        `kubectl rollout restart deploy/${refunds.app.deployment} -n ${ns}`)}`;
+  }
+
   function nav(facts) {
     const back = step > 0 ? `<button class="btn" type="button" data-go="${step - 1}">← Back</button>` : "";
     let next = step < STEPS.length - 1 ? `<button class="btn primary" type="button" data-go="${step + 1}">Next: ${STEPS[step + 1].title} →</button>` : "";
@@ -556,7 +569,8 @@
             service account, and no policy names it.</p>
             ${run("try-refunds", "Deploy refunds", { app: "refunds", action: "scale", replicas: 1 },
               `kubectl scale deploy/${refunds.app.deployment} -n ${ns} --replicas=1`)}
-            <p class="expect"><b>Expected:</b> a refunds row appears with no credential, so Postgres refuses it.</p>`,
+            <p class="expect"><b>Expected:</b> a refunds row appears with no credential, so Postgres refuses it.</p>
+            ${refunds.admitted ? leftoverPolicy(refunds, ns) : ""}`,
             "refunds got no credential: no policy matched it.<br>Moving on removes it.")}
         </ol>`;
     } else if (s.key === "rotate") {
@@ -833,8 +847,18 @@
   const RESTART_WAIT_MS = 6000;
   const startOverError = document.getElementById("start-over-error");
   const startOverFailed = document.getElementById("start-over-failed");
+  const startOverPolicy = document.getElementById("start-over-policy");
 
   function openStartOver() {
+    // refunds running with a credential got it from a policy, likely the one from
+    // step 4. It may be deleted since (refunds keeps its credential until it
+    // restarts), but if not, starting over cannot remove it and step 2 needs it gone.
+    const refunds = status ? analyze().refunds : null;
+    startOverPolicy.hidden = !(refunds && refunds.admitted);
+    if (refunds && refunds.admitted) {
+      startOverPolicy.innerHTML = `The refunds policy from step 4 may still be in Hush. If you haven't deleted it, delete it
+        in the Hush UI under <b>Access &gt; Policies</b>, or step 2 cannot show an app without a policy.`;
+    }
     startOverFailed.hidden = true;
     startOverConfirm.disabled = false;
     startOverCancel.disabled = false;
