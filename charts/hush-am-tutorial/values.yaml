@@ -19,6 +19,9 @@ postgres:
     # Postgres settles around 130MB here: the capped table, and the write-ahead
     # log it keeps for reuse (80MB). Some providers round up, EBS to 1Gi.
     size: 256Mi
+  # Annotations for the database's pod, such as karpenter.sh/do-not-disrupt:
+  # "true" to keep Karpenter from moving it. Set on install.
+  podAnnotations: {}
 
 client:
   image:
