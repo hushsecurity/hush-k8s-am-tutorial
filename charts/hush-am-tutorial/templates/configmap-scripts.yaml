@@ -19,5 +19,23 @@ data:
 
     INSERT INTO invoices (ref)
     SELECT 'seed'
-    WHERE NOT EXISTS (SELECT 1 FROM invoices WHERE ref = 'seed');
+    WHERE NOT EXISTS (SELECT 1 FROM invoices);
+
+    -- Keep the newest rows only: the apps write every few seconds, so a tutorial
+    -- left running would otherwise grow without end. Runs as the table's owner,
+    -- whatever the privileges of the app that wrote.
+    CREATE INDEX IF NOT EXISTS invoices_written_at ON invoices (written_at);
+
+    CREATE OR REPLACE FUNCTION trim_invoices() RETURNS trigger
+    LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+    BEGIN
+      DELETE FROM public.invoices
+      WHERE written_at < (SELECT written_at FROM public.invoices ORDER BY written_at DESC OFFSET 999 LIMIT 1);
+      RETURN NULL;
+    END
+    $$;
+
+    CREATE OR REPLACE TRIGGER trim_invoices
+    AFTER INSERT ON invoices
+    FOR EACH STATEMENT EXECUTE FUNCTION trim_invoices();
 
