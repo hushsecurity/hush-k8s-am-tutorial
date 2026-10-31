@@ -297,7 +297,9 @@ class PageHandler(Handler):
         preflight), which this server never grants; the Host check stops a
         site that rebinds its own name to 127.0.0.1.
         """
-        host = (self.headers.get("Host") or "").rsplit(":", 1)[0].lower()
+        host = (self.headers.get("Host") or "").strip().lower()
+        # Without its port: after the "]" of an IPv6 address, or else after the first ":".
+        host = host[: host.find("]") + 1] if host.startswith("[") else host.partition(":")[0]
         content_type = (self.headers.get("Content-Type") or "").split(";")[0].strip()
         return host in LOCAL_HOSTS + EXTRA_HOSTS and content_type == "application/json"
 
