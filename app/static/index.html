@@ -63,7 +63,7 @@
   .logo svg { width: 100%; height: 100%; display: block; }
   .product { font-weight: 600; color: var(--ink); padding-left: 16px; border-left: 1px solid var(--line); }
   .live-chip { margin-left: auto; display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); }
-  .pulse { width: 8px; height: 8px; border-radius: 50%; background: var(--live); box-shadow: 0 0 0 0 var(--live); animation: beat 2s infinite; }
+  .pulse { width: 8px; height: 8px; border-radius: 50%; background: var(--live); box-shadow: 0 0 0 0 var(--live); }
   @keyframes beat { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--live) 55%, transparent); } 70% { box-shadow: 0 0 0 7px transparent; } 100% { box-shadow: 0 0 0 0 transparent; } }
 
   /* Step bar */
@@ -88,7 +88,7 @@
   .story p { max-width: 60ch; }
   .look { display: flex; flex-direction: column; gap: 10px; padding: 0; margin: 0; list-style: none; }
   .look li { display: flex; gap: 12px; }
-  .look .pin { flex: none; width: 22px; height: 22px; border-radius: 6px; background: var(--accent-soft); color: var(--accent); font-size: 12px; font-weight: 700; display: grid; place-items: center; margin-top: 1px; }
+  .look .pin { flex: none; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); margin: 9px 4px 0; }
   .tasks { display: flex; flex-direction: column; gap: 14px; }
   .task { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 12px; }
   .task .box { width: 20px; height: 20px; margin-top: 2px; border-radius: 6px; border: 1.5px solid var(--faint); display: grid; place-items: center; color: transparent; font-size: 12px; }
@@ -127,6 +127,7 @@
 
   /* Stage */
   .stage { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
+  #extra:empty { display: none; }
   .stage-head { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
   .stage-head h2 { font-size: 17px; }
   .stage-head .sub { font-size: 13px; color: var(--muted); }
@@ -136,7 +137,7 @@
   .apps thead th { font-size: 11.5px; font-weight: 600; color: var(--muted); background: var(--surface); }
   .apps thead tr.groups th { font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--faint); padding-bottom: 2px; border-bottom: 0; }
   .apps thead tr.groups th.live-group { color: var(--ok); }
-  .apps thead tr.groups th .gdot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--live); margin-right: 6px; vertical-align: 1px; animation: beat 2s infinite; }
+  .apps thead tr.groups th .gdot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--live); margin-right: 6px; vertical-align: 1px; }
   .apps thead tr.cols th { padding-top: 2px; border-bottom: 1px solid var(--line); }
   .apps tbody tr + tr td { border-top: 1px solid var(--line); }
   .apps .sep { border-left: 1px solid var(--line); }
@@ -154,8 +155,8 @@
   td.op { text-align: center; min-width: 70px; }
   .mark { font-weight: 700; font-size: 13px; display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 6px; }
   .mark.ok { color: var(--ok); background: var(--ok-soft); }
-  .mark.no { color: var(--deny); background: var(--deny-soft); }
-  .mark.blocked { color: var(--accent); background: var(--accent-soft); font-weight: 600; }
+  .mark.no { color: var(--note); background: var(--note-soft); }
+  .mark.blocked { color: var(--deny); background: var(--deny-soft); }
   .pwsnip { font-size: 12px; color: var(--muted); margin-left: 6px; }
   .alive { display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; color: var(--muted); margin-top: 3px; font-variant-numeric: tabular-nums; }
   .sa { font-size: 11.5px; color: var(--faint); margin-top: 3px; font-family: var(--mono); }
@@ -180,8 +181,12 @@
   .aside { font-size: 13px; color: var(--muted); border-left: 3px solid var(--accent-soft); padding-left: 12px; }
   .when { white-space: nowrap; font-size: 12.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
   .when .pulse { display: inline-block; margin-right: 6px; vertical-align: 1px; }
-  tr.flash td { animation: flash 0.9s ease-out; }
+  /* Motion only when a pod reports: its dot beats once and its results flash, more strongly when they changed. */
+  tr.report .alive .pulse { animation: beat 1.2s 1; }
+  tr.report td.op { animation: flash 0.9s ease-out; }
+  tr.changed td { animation: flash-strong 1.8s ease-out; }
   @keyframes flash { from { background: color-mix(in srgb, var(--live) 14%, transparent); } to { background: transparent; } }
+  @keyframes flash-strong { from { background: color-mix(in srgb, var(--live) 32%, transparent); } to { background: transparent; } }
   tr.ghost td { color: var(--faint); background: repeating-linear-gradient(135deg, transparent 0 8px, color-mix(in srgb, var(--surface-2) 60%, transparent) 8px 16px); }
   tr.ghost .app-name { color: var(--muted); }
   .nocred { color: var(--note); font-size: 12px; }
@@ -195,6 +200,7 @@
 
   .legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: 12px; color: var(--muted); }
   .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .legend [hidden] { display: none; }
 
   /* Revisions lanes (step 3) */
   .lanes { display: flex; flex-direction: column; gap: 10px; }
@@ -212,7 +218,7 @@
   @media (max-width: 560px) { .lane { grid-template-columns: minmax(0, 1fr); } }
 
   @media (prefers-reduced-motion: reduce) {
-    .pulse, .gdot, tr.flash td { animation: none !important; }
+    tr.report .alive .pulse, tr.report td.op, tr.changed td { animation: none !important; }
   }
   html, body { margin: 0; }
   .live-chip.down { color: var(--deny); }
@@ -248,6 +254,7 @@
   <div class="wrap">
     <section class="story" id="story" aria-live="polite"></section>
     <section class="stage" aria-label="Live view">
+      <div id="extra"></div>
       <div class="stage-head">
         <h2>Your apps, live</h2>
         <span class="sub" id="stage-sub">Each pod reads and writes the invoices table every few seconds.</span>
@@ -264,7 +271,7 @@
             <tr class="cols">
               <th>App</th>
               <th class="c-ident sep">Matches → grants</th>
-              <th class="c-deliv sep">Database login</th>
+              <th class="c-deliv sep">Database credential</th>
               <th class="c-op sep">read invoices</th>
               <th class="c-op">write invoices</th>
             </tr>
@@ -275,9 +282,8 @@
       <div class="legend" id="legend">
         <span><span class="mark ok">✓</span> allowed</span>
         <span><span class="mark blocked">✕ denied</span> denied by the policy</span>
-        <span><span class="mark no">✕ failed</span> failed, though the policy allows it</span>
+        <span id="legend-failed" hidden><span class="mark no">✕ failed</span> failed, though the policy allows it</span>
       </div>
-      <div id="extra"></div>
     </section>
   </div>
 </main>
@@ -309,7 +315,9 @@
   let refundsTried = false;
   // Whether billing ran more than one pod, so step 3 offers to scale it back down.
   let billingScaledUp = false;
+  // Each pod's last report and its result, so a row moves only when its pod reports.
   const lastReport = {};
+  const lastResult = {};
   // Password hint per role, remembered after the pods that used it are gone.
   const hints = {};
 
@@ -356,6 +364,8 @@
   }
 
   const shortPod = (pod) => pod.split("-").pop();
+  // Seconds since a time in milliseconds.
+  const ago = (at) => Math.max(0, Math.round((Date.now() - at) / 1000));
 
   // A value to type into the Hush UI, with its own copy button.
   function val(text) {
@@ -492,23 +502,23 @@
     let body = "";
 
     if (s.key === "deployed") {
-      body = `<h1>Two apps, each with its own policy</h1>
+      body = `<h1>Each app's credential, delivered by Hush</h1>
         <p><b>billing</b> and <b>analytics</b> are example services sharing one Postgres database. The table shows them live.</p>
         <ul class="look">
-          <li><span class="pin">1</span><p>Each app signs in to Postgres with its own login. Its deployment holds only the
+          <li><span class="pin" aria-hidden="true"></span><p>Each app signs in to Postgres with its own credential. Its deployment holds only the
             database address, no credential.</p></li>
-          <li><span class="pin">2</span><p>Hush delivered that login (username and password) when the pod started,
+          <li><span class="pin" aria-hidden="true"></span><p>Hush delivered that credential (username and password) when the pod started,
             after checking the pod's identity against its policy. Nobody created, stored or shared the password.</p></li>
         </ul>
         ${received(facts)}`;
     } else if (s.key === "access") {
       body = `<h1>Each app gets exactly what its policy grants</h1>
-        <p>Both apps run the same image. Hush verifies each pod's attributes with Kubernetes (here, its service account) and
+        <p>Both apps run the same image. Hush verifies each pod's identity with Kubernetes (here, its service account) and
           applies the matching policy.</p>
         <ul class="look">
-          <li><span class="pin">1</span><p><b>billing</b>: read + write → both succeed.</p></li>
-          <li><span class="pin">2</span><p><b>analytics</b>: read only → writes denied (it tries on purpose).</p></li>
-          <li><span class="pin">3</span><p>Neither app's code nor configuration mentions its policy.</p></li>
+          <li><span class="pin" aria-hidden="true"></span><p><b>billing</b>: read + write → both succeed.</p></li>
+          <li><span class="pin" aria-hidden="true"></span><p><b>analytics</b>: read only → writes denied (it tries on purpose).</p></li>
+          <li><span class="pin" aria-hidden="true"></span><p>Neither app's code nor configuration mentions its policy.</p></li>
         </ul>
         <details class="by-hand" data-key="policies"${openByHand.has("policies") ? " open" : ""}><summary>View the policies</summary>
           <p class="expect">In the Hush UI, under <b>Access &gt; Policies</b>, or as Kubernetes resources:</p>
@@ -525,13 +535,12 @@
     } else if (s.key === "rotate") {
       const deploy = billingApp.deployment || "billing";
       body = `<h1>Rotate billing's credential without downtime</h1>
-        <p>Hush rotates credentials on a schedule. Rotate one by hand to watch: running pods keep their revision, new pods
-          get the latest, and an unused revision is removed later.</p>
+        <p>Hush rotates credentials on a schedule. Rotate one by hand and watch.</p>
         <ol class="actions">
           ${action(billing.rotated, `<p>In the Hush UI, under <b>Access &gt; Policies</b>, open the policy <code>${esc(billingApp.policy || "billing")}</code> and click the
             <b>Rotate</b> button in the top-right corner.</p>
-            <p class="expect"><b>Expected:</b> a new revision appears below the table. billing's pod stays on its revision and
-              keeps working.</p>`,
+            <p class="expect"><b>Expected:</b> ${billing.base !== undefined ? `revision ${billing.base + 1}` : "a new revision"}
+              appears under <b>Credential revisions</b>. billing's pod stays on its revision and keeps working.</p>`,
             `Revision ${billing.latest} is here`)}
           ${action(billing.newInstance, `<p>Start a second billing pod.</p>
             ${run("scale-up", "Scale billing to 2", { app: "billing", action: "scale", replicas: 2 },
@@ -561,13 +570,13 @@
         <p class="aside">Here you use the Hush UI. In production, policies are managed as code, for example as Kubernetes
           resources or with Terraform.</p>
         <ol class="actions">
-          ${action(false, `<p>In the Hush UI, under <b>Access &gt; Policies</b>, create a policy with:</p><table class="fields">
+          ${action(refunds.admitted, `<p>In the Hush UI, under <b>Access &gt; Policies</b>, create a policy with:</p><table class="fields">
               <tr><th>Name</th><td>${val(app.deployment)}<br><span class="hint">any name</span></td></tr>
               <tr><th>Application</th><td>Postgres</td></tr>
               <tr><th>Application connector</th><td>${val(cfg.credential)}<br><span class="hint">registered by the tutorial</span></td></tr>
               <tr><th>Privilege</th><td>your choice:<br>${val(privileges[1])}<br>${val(privileges[0])}</td></tr>
-              <tr><th>Access condition</th><td><span class="hint">Namespace</span><br>${val(ns)}</td></tr>
-              <tr><th>Access condition</th><td><span class="hint">Service account</span><br>${val(app.serviceAccount)}</td></tr>
+              <tr><th>Access condition</th><td><span class="hint">Namespace</span><br>${val(ns)}<br>
+                <span class="hint">Service account</span><br>${val(app.serviceAccount)}</td></tr>
               <tr><th>Delivery</th><td>Environment variables:<br>
                 <code>POSTGRES_USERNAME</code> ← <code>username</code>, <code>POSTGRES_PASSWORD</code> ← <code>password</code></td></tr></table>`)}
           ${action(refunds.admitted, `<p>Once the policy is saved, deploy refunds.</p>
@@ -578,13 +587,13 @@
     } else {
       body = `<h1>What you just saw</h1>
         <ul class="look">
-          <li><span class="pin">1</span><p><b>No credential to manage.</b> Hush delivered each app's login at pod start. Nobody
+          <li><span class="pin" aria-hidden="true"></span><p><b>No credential to manage.</b> Hush delivered each app's credential at pod start. Nobody
             created, stored or shared it.</p></li>
-          <li><span class="pin">2</span><p><b>Access per identity.</b> Each app got exactly what its policy grants, based on the
+          <li><span class="pin" aria-hidden="true"></span><p><b>Access per identity.</b> Each app got exactly what its policy grants, based on the
             identity Hush verified.</p></li>
-          <li><span class="pin">3</span><p><b>Rotation without downtime.</b> Running pods kept working while new ones got the
+          <li><span class="pin" aria-hidden="true"></span><p><b>Rotation without downtime.</b> Running pods kept working while new ones got the
             new revision.</p></li>
-          <li><span class="pin">4</span><p><b>Access ready before deploy</b> (step 4). A new app starts with the access prepared
+          <li><span class="pin" aria-hidden="true"></span><p><b>Access ready before deploy</b> (step 4). A new app starts with the access prepared
             for it.</p></li>
         </ul>
         <h2 class="subhead">Clean up</h2>
@@ -608,6 +617,13 @@
     return /readwrite/.test(app.privilege) ? "rw" : "ro";
   }
 
+  // An app whose access is chosen in the Hush UI: what its pod's attempts show it got.
+  function grantSeen(ops) {
+    if (ops["write:invoices"] === true) return "rw";
+    if (ops["read:invoices"] === true) return "ro";
+    return "ui";
+  }
+
   function grantChip(grant) {
     if (grant === "rw") return `<span class="grant rw">read + write</span>`;
     if (grant === "ro") return `<span class="grant ro">read only</span>`;
@@ -621,43 +637,51 @@
   }
 
   function renderRows(facts) {
-    const sinceFetch = (Date.now() - fetchedAt) / 1000;
     const key = STEPS[step].key;
+    let anyFailed = false;
     const rows = facts.pods.map((pod) => {
       const app = facts.appCfg(pod.app);
-      const grant = grantOf(app);
       const c = pod.credential;
+      const o = facts.ops(pod);
+      const grant = grantOf(app) === "ui" && c ? grantSeen(o) : grantOf(app);
       const role = parseRole(c && c.username);
       const latest = role ? facts.latest[role.policyId] : null;
       const old = role && latest && role.revision < latest;
-      const ago = Math.max(0, Math.round((pod.secondsSinceReport || 0) + sinceFetch));
+      const reportedAt = fetchedAt - (pod.secondsSinceReport || 0) * 1000;
       const dim = (key === "rotate" && pod.app !== "billing") || (key === "onboard" && facts.refunds.pods.length && pod.app !== "refunds");
-      const flash = lastReport[pod.pod] && lastReport[pod.pod] !== pod.reportedAt;
+      const reported = lastReport[pod.pod] && lastReport[pod.pod] !== pod.reportedAt;
       lastReport[pod.pod] = pod.reportedAt;
+      // Not the operations' details: they differ on every report.
+      const result = JSON.stringify([c && c.username, (pod.operations || []).map((op) => [op.operation, op.table, op.ok]), pod.error]);
+      const changed = reported && lastResult[pod.pod] !== result;
+      lastResult[pod.pod] = result;
 
+      // Revisions mean something from step 3, where rotation is shown.
+      const showRev = step >= STEPS.findIndex((s) => s.key === "rotate");
       const login = c
-        ? `<span class="rev${old ? " old" : ""}">revision ${role ? role.revision : "?"}</span><code class="pwsnip">${esc(c.passwordPreview)}••••</code>
-           ${old ? `<div class="sa">older revision, still valid</div>` : ""}`
-        : `<span class="nocred">no credential: no policy matched</span>`;
+        ? (showRev ? `<span class="rev${old ? " old" : ""}">revision ${role ? role.revision : "?"}</span>` : "")
+          + `<code class="pwsnip">${esc(c.passwordPreview)}••••</code>
+           ${showRev && old ? `<div class="sa">older revision, still valid</div>` : ""}`
+        : `<span class="nocred">none</span>`;
 
       let cells;
       if (!c || pod.error) {
-        cells = `<td class="op c-op sep" colspan="2"><span class="nocred">Postgres refused the connection</span></td>`;
+        cells = `<td class="op c-op sep" colspan="2"><span class="nocred">refused</span></td>`;
       } else {
-        const o = facts.ops(pod);
         cells = OPS.map(([table, op], i) => {
           const ok = o[`${op}:${table}`];
           const allowed = grant === "rw" || (grant === "ro" && op === "read");
           let mark = `<span class="mark idle">–</span>`;
           if (ok === true) mark = `<span class="mark ok">✓</span>`;
-          else if (ok === false) mark = allowed ? `<span class="mark no">✕ failed</span>` : `<span class="mark blocked">✕ denied</span>`;
+          else if (ok === false && allowed) { mark = `<span class="mark no">✕ failed</span>`; anyFailed = true; }
+          else if (ok === false) mark = `<span class="mark blocked">✕ denied</span>`;
           return `<td class="op c-op${i === 0 ? " sep" : ""}">${mark}</td>`;
         }).join("");
       }
 
-      return `<tr class="${flash ? "flash" : ""}${dim ? " dim" : ""}">
+      return `<tr class="${reported ? "report" : ""}${changed ? " changed" : ""}${dim ? " dim" : ""}">
         <td><div class="app-name">${esc(pod.app)}</div><div class="pod">pod ${esc(shortPod(pod.pod))}</div>
-          <div class="alive"><span class="pulse" aria-hidden="true"></span>tried ${ago}s ago</div></td>
+          <div class="alive"><span class="pulse" aria-hidden="true"></span><span>tried <span class="ago" data-at="${reportedAt}">${ago(reportedAt)}</span>s ago</span></div></td>
         <td class="c-ident sep">${rule(pod.serviceAccount, !c && grant === "ui" ? "none" : grant)}</td>
         <td class="c-deliv sep">${login}</td>
         ${cells}
@@ -671,6 +695,7 @@
     }
     if (!rows.length) rows.push(`<tr><td colspan="5"><p class="empty">Waiting for the apps to report…</p></td></tr>`);
     document.getElementById("rows").innerHTML = rows.join("");
+    document.getElementById("legend-failed").hidden = !anyFailed;
 
     const table = document.getElementById("apps");
     table.className = "apps" + (key === "deployed" ? " focus-delivered" : key === "access" ? " focus-access" : "");
@@ -701,8 +726,8 @@
       return `<div class="lane${role.retiredAt ? " removed" : ""}"><div class="label">Revision ${role.revision}${hint}</div>
         <div class="chips">${chips}</div>${state}</div>`;
     });
-    el.innerHTML = `<div class="stage-head"><h2>billing's credential, by revision</h2>
-      <span class="sub">Which pods use each revision, read live from Postgres.</span></div>
+    el.innerHTML = `<div class="stage-head"><h2>Credential revisions</h2>
+      <span class="sub">Which <b>billing</b> pods use each revision, read live from Postgres.</span></div>
       <div class="lanes">${lanes.join("") || `<p class="empty">Waiting for billing to report…</p>`}</div>`;
   }
 
@@ -804,8 +829,10 @@
   renderStepbar();
   poll();
   setInterval(poll, POLL_MS);
-  // Between polls, keep the "tried Ns ago" counters moving.
-  setInterval(() => { if (status) renderRows(analyze()); }, 1000);
+  // Between polls, keep the "tried Ns ago" counters moving, without redrawing the rows.
+  setInterval(() => {
+    document.querySelectorAll(".ago").forEach((el) => { el.textContent = ago(Number(el.dataset.at)); });
+  }, 1000);
 </script>
 </body>
 </html>
