@@ -51,8 +51,9 @@
 {{- printf "%s-dashboard" (include "hush-am-tutorial.fullname" .) -}}
 {{- end -}}
 
+{{- /* Where the apps send their reports. */ -}}
 {{- define "hush-am-tutorial.dashboardUrl" -}}
-{{- printf "http://%s.%s.svc.cluster.local:%v" (include "hush-am-tutorial.dashboardName" .) .Release.Namespace .Values.dashboard.port -}}
+{{- printf "http://%s-reports.%s.svc.cluster.local:%v" (include "hush-am-tutorial.dashboardName" .) .Release.Namespace .Values.dashboard.reportPort -}}
 {{- end -}}
 
 {{- /* The names the tutorial page shows in its commands and UI values, as JSON. */ -}}

@@ -37,6 +37,9 @@ apps:
 # scaling and restarting the tutorial's apps, for the page's buttons.
 dashboard:
   port: 8080
+  # Where the apps send their reports: a Service of its own, inside the cluster
+  # only, apart from the page's.
+  reportPort: 8081
 
 hooks:
   kubectlImage: alpine/kubectl:1.33.4

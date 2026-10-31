@@ -35,6 +35,8 @@ spec:
           env:
             - name: LISTEN_PORT
               value: {{ .Values.dashboard.port | quote }}
+            - name: REPORT_PORT
+              value: {{ .Values.dashboard.reportPort | quote }}
             - name: POLL_INTERVAL_SECONDS
               value: {{ .Values.client.pollIntervalSeconds | quote }}
             - name: TUTORIAL_CONFIG
@@ -42,6 +44,8 @@ spec:
           ports:
             - containerPort: {{ .Values.dashboard.port }}
               name: http
+            - containerPort: {{ .Values.dashboard.reportPort }}
+              name: reports
           readinessProbe:
             httpGet:
               path: /healthz
@@ -65,4 +69,25 @@ spec:
   ports:
     - port: {{ .Values.dashboard.port }}
       targetPort: http
+      protocol: TCP
+---
+{{- /* The apps' reports: inside the cluster only, apart from the page's Service. */}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "hush-am-tutorial.dashboardName" . }}-reports
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: {{ include "hush-am-tutorial.name" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: dashboard
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: {{ include "hush-am-tutorial.name" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: dashboard
+  ports:
+    - port: {{ .Values.dashboard.reportPort }}
+      targetPort: reports
       protocol: TCP

@@ -16,7 +16,10 @@ logging.basicConfig(
     format="%(asctime)s %(levelname)s %(message)s",
 )
 
+# The page, its status and its actions; and, apart, the apps' reports, so that
+# exposing the page never exposes the reports.
 LISTEN_PORT = int(os.getenv("LISTEN_PORT", "8080"))
+REPORT_PORT = int(os.getenv("REPORT_PORT", "8081"))
 POLL_INTERVAL_SECONDS = int(os.getenv("POLL_INTERVAL_SECONDS", "15"))
 # A pod that missed this many reports in a row is treated as gone.
 STALE_AFTER_CYCLES = int(os.getenv("STALE_AFTER_CYCLES", "3"))
@@ -233,6 +236,10 @@ class Handler(BaseHTTPRequestHandler):
             raise ValueError("missing or oversized body")
         return json.loads(self.rfile.read(length))
 
+
+class PageHandler(Handler):
+    """The page, its status and its buttons."""
+
     def do_GET(self):
         if self.path == "/status":
             self._send_json(200, STATE.snapshot())
@@ -279,7 +286,20 @@ class Handler(BaseHTTPRequestHandler):
     def do_POST(self):
         if self.path == "/action":
             self._action()
-            return
+        else:
+            self._send(404, b"not found", "text/plain")
+
+
+class ReportHandler(Handler):
+    """The apps' reports, from inside the cluster."""
+
+    def do_GET(self):
+        if self.path == "/healthz":
+            self._send(200, b"ok", "text/plain")
+        else:
+            self._send(404, b"not found", "text/plain")
+
+    def do_POST(self):
         try:
             payload = self._read_json()
             if self.path == "/report":
@@ -300,9 +320,11 @@ def main() -> None:
     # As PID 1 the process ignores SIGTERM unless it installs a handler.
     signal.signal(signal.SIGTERM, lambda *_: sys.exit(0))
 
-    server = ThreadingHTTPServer(("", LISTEN_PORT), Handler)
-    logging.info("Dashboard listening on port %s", LISTEN_PORT)
-    server.serve_forever()
+    reports = ThreadingHTTPServer(("", REPORT_PORT), ReportHandler)
+    threading.Thread(target=reports.serve_forever, daemon=True).start()
+    page = ThreadingHTTPServer(("", LISTEN_PORT), PageHandler)
+    logging.info("Dashboard listening on port %s, reports on port %s", LISTEN_PORT, REPORT_PORT)
+    page.serve_forever()
 
 
 if __name__ == "__main__":
