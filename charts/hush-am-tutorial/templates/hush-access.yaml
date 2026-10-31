@@ -17,7 +17,7 @@ metadata:
 spec:
   name: {{ .Values.hush.credentialName }}
   type: postgres
-  description: Root credential used by Hush to broker Postgres access
+  description: {{ printf "Root credential used by Hush to broker Postgres access for the tutorial in namespace %s" .Release.Namespace | quote }}
   config:
     db_name: {{ .Values.postgres.dbName | quote }}
     host: {{ default (include "hush-am-tutorial.postgresHost" .) .Values.hush.postgresHost | quote }}
@@ -35,7 +35,7 @@ metadata:
 spec:
   name: {{ include "hush-am-tutorial.fullname" . }}-readwrite-all
   type: postgres
-  description: Read and write access to the tutorial's invoices table
+  description: {{ printf "Read and write access to the invoices table of the tutorial in namespace %s" .Release.Namespace | quote }}
   config:
     grants:
       - object_type: SCHEMA
@@ -53,7 +53,7 @@ metadata:
 spec:
   name: {{ include "hush-am-tutorial.fullname" . }}-read-all
   type: postgres
-  description: Read access to the tutorial's invoices table
+  description: {{ printf "Read access to the invoices table of the tutorial in namespace %s" .Release.Namespace | quote }}
   config:
     grants:
       - object_type: SCHEMA
@@ -72,7 +72,7 @@ metadata:
   namespace: {{ $.Values.hush.namespace }}
 spec:
   name: {{ include "hush-am-tutorial.appName" (list $ $app) }}
-  description: Inject Postgres credentials into the tutorial {{ $app }} app
+  description: {{ printf "Inject Postgres credentials into the tutorial %s app in namespace %s" $app $.Release.Namespace | quote }}
   accessCredentialRef:
     name: {{ $.Values.hush.credentialName }}
   accessPrivilegeRefs:
