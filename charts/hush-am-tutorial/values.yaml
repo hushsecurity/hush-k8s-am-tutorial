@@ -8,6 +8,17 @@ postgres:
   # Left empty, a random one is generated on install and kept on upgrades.
   rootPassword: ""
   port: 5432
+  # Keep the database on a persistent volume instead of in its pod, for an
+  # install left running: otherwise the database starts over empty whenever its
+  # pod moves to another node, losing the logins Hush created in it. Set on
+  # install; removed on uninstall.
+  persistence:
+    enabled: false
+    # Empty for the cluster's default storage class.
+    storageClass: ""
+    # Postgres settles around 130MB here: the capped table, and the write-ahead
+    # log it keeps for reuse (80MB). Some providers round up, EBS to 1Gi.
+    size: 256Mi
 
 client:
   image:

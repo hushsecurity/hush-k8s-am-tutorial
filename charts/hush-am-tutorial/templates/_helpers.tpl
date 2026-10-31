@@ -23,6 +23,10 @@
 {{- printf "%s-postgres" (include "hush-am-tutorial.fullname" .) -}}
 {{- end -}}
 
+{{- define "hush-am-tutorial.postgresDataName" -}}
+{{- printf "%s-data" (include "hush-am-tutorial.postgresName" .) -}}
+{{- end -}}
+
 {{- define "hush-am-tutorial.postgresHost" -}}
 {{- printf "%s.%s.svc.cluster.local" (include "hush-am-tutorial.postgresName" .) .Release.Namespace -}}
 {{- end -}}

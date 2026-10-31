@@ -51,6 +51,11 @@ rules:
     resources: ["jobs"]
     resourceNames: [{{ printf "%s-wait" (include "hush-am-tutorial.postgresName" .) | quote }}]
     verbs: ["delete"]
+  # Whether or not the latest values enable persistence: the install's may have.
+  - apiGroups: [""]
+    resources: ["persistentvolumeclaims"]
+    resourceNames: [{{ include "hush-am-tutorial.postgresDataName" . | quote }}]
+    verbs: ["delete"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding

@@ -48,6 +48,12 @@ balancer or ingress, expose only the `hush-am-tutorial-dashboard` Service
   with keys `username` and `password`, that the page then asks for. Serve the
   page over HTTPS, so the password is not sent in the clear.
 
+## Leaving it running
+
+For an install left running, set `postgres.persistence.enabled` at install:
+otherwise the database starts over empty if its pod moves to another node, and
+the apps lose their logins.
+
 ## What it installs
 
 - In `husham-tutorial`: the billing and analytics apps, the refunds app (with

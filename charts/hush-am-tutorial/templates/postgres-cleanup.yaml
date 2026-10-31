@@ -40,5 +40,6 @@ spec:
                 deployment/{{ include "hush-am-tutorial.postgresName" . }} \
                 service/{{ include "hush-am-tutorial.postgresName" . }} \
                 configmap/{{ include "hush-am-tutorial.postgresName" . }}-init \
-                job/{{ include "hush-am-tutorial.postgresName" . }}-wait
+                job/{{ include "hush-am-tutorial.postgresName" . }}-wait \
+                persistentvolumeclaim/{{ include "hush-am-tutorial.postgresDataName" . }}
               echo "Postgres hook resources removed."
